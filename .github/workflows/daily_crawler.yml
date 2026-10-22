@@ -2,9 +2,9 @@ name: Autonomous Daily News Pipeline
 
 on:
   schedule:
-    # Roz subah 5:00 AM IST (23:30 UTC) par chalega
+    # 5:00 AM IST daily (23:30 UTC)
     - cron: '30 23 * * *'
-  workflow_dispatch: # Taaki hum abhi turant test button daba sakein
+  workflow_dispatch:
 
 jobs:
   run-pipeline:
@@ -13,13 +13,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set Up Python
+      - name: Set Up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install Dependencies
-        run: pip install feedparser google-generativeai supabase
+        run: pip install feedparser google-genai supabase
 
       - name: Execute Crawler
         env:
