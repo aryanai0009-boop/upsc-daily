@@ -1,0 +1,29 @@
+name: Autonomous Daily News Pipeline
+
+on:
+  schedule:
+    # Roz subah 5:00 AM IST (23:30 UTC) par chalega
+    - cron: '30 23 * * *'
+  workflow_dispatch: # Taaki hum abhi turant test button daba sakein
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install feedparser google-generativeai supabase
+
+      - name: Execute Crawler
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python crawler.py
