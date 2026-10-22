@@ -1,22 +1,21 @@
 import os
 import json
 import feedparser
-import google.generativeai as genai
+from google import genai
 from supabase import create_client
 
-# 1. API Keys (Secrets se aayengi)
+# Environment Variables
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 
 if not all([GEMINI_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    raise ValueError("Missing environment variables: GEMINI_API_KEY, SUPABASE_URL, or SUPABASE_SERVICE_KEY")
+    raise ValueError("Missing critical environment variables!")
 
-genai.configure(api_key=GEMINI_KEY)
+# Naya Official Google GenAI Client
+client = genai.Client(api_key=GEMINI_KEY)
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
 
-# 2. Public Live RSS Endpoints
 FEEDS = [
     {"name": "IE Explained", "url": "https://indianexpress.com/section/explained/feed/"},
     {"name": "Hindu Editorial", "url": "https://www.thehindu.com/opinion/editorial/feeder/default.rss"}
@@ -30,10 +29,10 @@ Examine the news article text strictly against official competitive exam syllabi
 
 RULES:
 1. RELEVANCE FILTER:
-   If the article is about political parties bickering, crime reports, cinema, celebrity news, sports, or routine local accidents, reply EXACTLY with: {"status": "SKIP"}
+   If the article is political party fighting, cinema, sports, or routine local crime, reply EXACTLY with: {"status": "SKIP"}
    Only approve articles with direct constitutional, governance, international relations, economic, environmental, or administrative significance.
 
-2. EXAM STRUCTURE & BILINGUAL OUTPUT:
+2. BILINGUAL EXAM-READY FORMAT:
    Return ONLY a valid JSON object matching this schema:
 {
   "status": "APPROVED",
@@ -54,7 +53,7 @@ RULES:
     "mcq_data": {
       "question": "Standard multi-statement question with deliberate conceptual trap",
       "options": {"A": "Option text", "B": "Option text", "C": "Option text", "D": "Option text"},
-      "answer": "A/B/C/D",
+      "answer": "A",
       "trap_explanation": "Precise explanation of why the correct option is right and others are traps"
     }
   },
@@ -71,36 +70,37 @@ RULES:
     ],
     "state_value_add": "राज्य विशेष (UP/Bihar/MP/RAS) शासन पर विशिष्ट प्रभाव",
     "conclusion": "संतुलित और व्यावहारिक भविष्योन्मुखी निष्कर्ष",
-    "pyq_reference": "विगत वर्षों के प्रश्न का संदर्भ (जैसे: UPSC Mains 2021 GS-2 Q4)",
+    "pyq_reference": "विगत वर्षों के प्रश्न का संदर्भ",
     "mcq_data": {
       "question": "कथन आधारित उच्च स्तरीय प्रीलिम्स प्रश्न",
       "options": {"A": "विकल्प पाठ", "B": "विकल्प पाठ", "C": "विकल्प पाठ", "D": "विकल्प पाठ"},
-      "answer": "A/B/C/D",
-      "trap_explanation": "विस्तृत व्याख्या कि कौन सा कथन सही है और क्या भ्रामक बिंदु था"
+      "answer": "A",
+      "trap_explanation": "विस्तृत व्याख्या कि कौन सा कथन सही है"
     }
   }
 }
 """
 
 def run_crawler():
-    print("Starting news extraction pipeline...")
+    print("Starting news extraction pipeline with official google-genai...")
     processed_count = 0
 
     for feed_source in FEEDS:
         print(f"Reading: {feed_source['name']}")
         feed = feedparser.parse(feed_source["url"])
 
-        for entry in feed.entries[:4]:
+        for entry in feed.entries[:3]:
             content = f"Title: {entry.title}\nSummary: {getattr(entry, 'summary', '')}"
             try:
-                response = model.generate_content(
-                    SYSTEM_PROMPT + "\n\nArticle Content:\n" + content,
-                    generation_config={"response_mime_type": "application/json"}
+                # Naye SDK ka call method
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=SYSTEM_PROMPT + "\n\nArticle Content:\n" + content,
+                    config={"response_mime_type": "application/json"}
                 )
                 data = json.loads(response.text.strip())
 
                 if data.get("status") == "APPROVED":
-                    # English Card Insert
                     en = data["en"]
                     supabase.table("daily_cards").insert({
                         "medium": "en",
@@ -116,7 +116,6 @@ def run_crawler():
                         "mcq_data": en["mcq_data"]
                     }).execute()
 
-                    # Hindi Card Insert
                     hi = data["hi"]
                     supabase.table("daily_cards").insert({
                         "medium": "hi",
