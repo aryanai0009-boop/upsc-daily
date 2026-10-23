@@ -13,146 +13,151 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 if not all([GEMINI_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
     raise ValueError("Missing critical environment variables!")
 
-# Clients
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 client = genai.Client(api_key=GEMINI_KEY)
 
-# Active working endpoints for Indian Express Explained & Hindu Editorial/National
+# Targeted High-Yield Feeds (The Hindu + Indian Express)
 FEEDS = [
-    {
-        "name": "Indian Express Explained",
-        "url": "https://indianexpress.com/section/explained/feed/"
-    },
-    {
-        "name": "The Hindu Editorial",
-        "url": "https://www.thehindu.com/opinion/editorial/feeder/default.rss"
-    },
-    {
-        "name": "The Hindu National",
-        "url": "https://www.thehindu.com/news/national/feeder/default.rss"
-    }
+    # 1. The Hindu - Editorial & Columns
+    {"source": "The Hindu", "section": "Editorial", "url": "https://www.thehindu.com/opinion/editorial/feeder/default.rss"},
+    {"source": "The Hindu", "section": "Lead & Opinion", "url": "https://www.thehindu.com/opinion/columns/feeder/default.rss"},
+    {"source": "The Hindu", "section": "National/Governance", "url": "https://www.thehindu.com/news/national/feeder/default.rss"},
+    
+    # 2. The Indian Express - Deep Explanations & Policies
+    {"source": "Indian Express", "section": "Explained", "url": "https://indianexpress.com/section/explained/feed/"},
+    {"source": "Indian Express", "section": "Opinion/Editorials", "url": "https://indianexpress.com/section/opinion/editorials/feed/"},
+    {"source": "Indian Express", "section": "Economy & Policy", "url": "https://indianexpress.com/section/business/economy/feed/"}
 ]
 
 SYSTEM_PROMPT = """
-You are an expert UPSC Civil Services and State PSC (UPPSC, BPSC, RAS, MPPSC) examination director, paper setter, and senior Mains evaluator.
+You are a senior UPSC Director of Evaluation and Joint State PSC (UPPSC, BPSC, RAS, MPPSC) Chief Paper Setter.
 
-YOUR TASK:
-Rigorously evaluate the provided newspaper article (Editorials/Explained) against official GS Papers (GS-1, GS-2, GS-3, GS-4) and State Public Service Commission core syllabi.
+YOUR GOAL:
+Filter all noise and produce elite, exam-ready intelligence. Select ONLY the most high-impact articles that directly correlate with GS Papers (GS-1 to GS-4) or State Administrative papers.
 
-STEP 1: STRICT SYLLABUS GATEKEEPER
-- If the article is sensational crime, purely electoral party speeches, sports entertainment, or celebrity gossip, discard immediately: {"status": "SKIP"}
-- Approve ONLY if it involves Constitutional law, governance structures, judicial interpretation, macroeconomic indicators, foreign policy, science/defence policy, or ecology/disaster management.
+MANDATORY FILTER RULES:
+1. STRICT REJECTION:
+   - Reject party politics, elections rhetoric, state vs state mudslinging, local crime, sports, entertainment, or superficial business updates.
+   - Reply ONLY with: {"status": "SKIP"}
 
-STEP 2: CURATE HIGH-YIELD INTELLIGENCE (Strictly follow this structure)
-Return ONLY a valid JSON object matching this exact structure:
+2. SYLLABUS-BOUND SELECTION:
+   - Approve ONLY if it has direct connection to:
+     * Constitution, Federalism, Statutory bodies, Judicial pronouncements (GS-2)
+     * Macroeconomics, Inflation, Industrial policy, Agriculture, Infrastructure, Environment/Biodiversity (GS-3)
+     * International Treaties, Geopolitics, Defence technology (GS-2 / GS-3)
+     * Governance Ethics, Administrative accountability (GS-4)
+     * Specific State PSC relevance: Devolution to Panchayats, land reforms, regional economic disparities (UPPSC GS 5/6, BPSC GS 1/2, RAS Paper 1/3).
 
+OUTPUT FORMAT:
+Return STRICT JSON ONLY matching this exact structure:
 {
   "status": "APPROVED",
+  "relevance_score": 9,
   "en": {
-    "topic": "Concise 8-10 word high-impact analytical title",
-    "upsc_tags": ["GS-Paper: Micro-syllabus topic (e.g., GS-2: Judicial Review & Basic Structure)"],
-    "state_psc_tags": ["State Paper: Topic (e.g., UPPSC GS-5: Administrative Reforms in UP)"],
+    "topic": "Concise 8-10 word high-yield analytical title",
+    "upsc_tags": ["GS-Paper: Micro-topic (e.g., GS-2: Federalism & Inter-State Water Disputes)"],
+    "state_psc_tags": ["State Paper: Topic (e.g., UPPSC GS-5: Panchayati Raj Reforms in UP)"],
     "crux_points": [
-      "Factual anchor & trigger (date, context, committee, act)",
-      "Core constitutional/statutory baseline or treaty provision",
-      "Actionable structural impact on Indian governance/economy"
+      "Factual trigger (Data, Committee, Act, or Judicial verdict)",
+      "Core constitutional or statutory mechanism involved",
+      "Socio-economic impact on national governance"
     ],
-    "intro": "30-word academic, punchy Mains opening sentence suitable for directly scoring marks.",
+    "intro": "30-word academic, punchy Mains opening sentence ready for answer sheets.",
     "body_dimensions": [
-      "Socio-Political/Constitutional: Relevant Articles, Acts, or Doctrine",
-      "Judicial/Committee Dimension: Supreme Court verdicts or Commission reports",
-      "Governance & Operational Bottlenecks: Real-world administrative hurdles"
+      "Constitutional/Statutory dimension with exact Articles/Acts",
+      "Judicial/Committee Dimension (Supreme Court verdicts, Law Commission or 2nd ARC)",
+      "Administrative bottlenecks or operational hurdles"
     ],
-    "state_value_add": "Specific comparative analysis or direct implication for UP/Bihar/Rajasthan/MP governance.",
+    "state_value_add": "Specific analytical application to UP/Bihar/Rajasthan/MP governance and rural administration.",
     "conclusion": "Pragmatic, constitutional, and sustainable way forward.",
-    "pyq_reference": "Exact or closely mapped past year question citation (e.g., UPSC Mains 2022 GS-2 Q3).",
+    "pyq_reference": "Exact or closely mapped PYQ citation (e.g., UPSC Mains 2022 GS-2 Q3 or BPSC 67th Mains GS-2).",
     "mcq_data": {
-      "question": "Standard multi-statement UPSC Prelims trap question (Statements 1, 2, 3 format).",
-      "options": {
-        "A": "1 and 2 only",
-        "B": "2 and 3 only",
-        "C": "1 and 3 only",
-        "D": "1, 2 and 3"
-      },
+      "question": "Standard multi-statement UPSC/PSC Prelims question (Statements 1, 2, 3 format).",
+      "options": {"A": "1 and 2 only", "B": "2 and 3 only", "C": "1 and 3 only", "D": "1, 2 and 3"},
       "answer": "B",
-      "trap_explanation": "Detailed conceptual dissection of why Statement 1 is an examiner trap and why option B is correct."
+      "trap_explanation": "Deep conceptual breakdown explaining the trap in other options and why the correct option is right."
     }
   },
   "hi": {
-    "topic": "सटीक 8-10 शब्दों का अकादमिक शीर्षक",
+    "topic": "सटीक 8-10 शब्दों का अकादमिक एवं विश्लेषणात्मक शीर्षक",
     "upsc_tags": ["जीएस प्रश्नपत्र: सूक्ष्म पाठ्यक्रम विषय"],
     "state_psc_tags": ["राज्य प्रश्नपत्र: सूक्ष्म विषय"],
     "crux_points": [
-      "प्रमुख घटनाक्रम एवं कानूनी/वैधानिक संदर्भ",
-      "संवैधानिक आधार एवं वर्तमान नीतिगत प्रभाव",
-      "भारतीय शासन व्यवस्था एवं अर्थव्यवस्था पर परिणाम"
+      "तथ्यात्मक आधार (आँकड़े, समिति, अधिनियम अथवा न्यायिक निर्णय)",
+      "संवैधानिक या वैधानिक प्रावधान",
+      "राष्ट्रीय शासन एवं अर्थव्यवस्था पर दीर्घकालिक प्रभाव"
     ],
-    "intro": "मुख्य परीक्षा उत्तर पुस्तिका हेतु 30 शब्दों की अकादमिक एवं प्रभावी भूमिका।",
+    "intro": "मुख्य परीक्षा उत्तर पुस्तिका हेतु 30 शब्दों की अकादमिक एवं स्कोरिंग भूमिका।",
     "body_dimensions": [
-      "संवैधानिक एवं नीतिगत आयाम: प्रमुख अनुच्छेद, अधिनियम या सिद्धांत",
-      "न्यायिक दृष्टिकोण एवं समितियाँ: उच्चतम न्यायालय के निर्णय या आयोगों की सिफारिशें",
-      "प्रशासनिक एवं संस्थागत चुनौतियाँ: कार्यान्वयन स्तर की वास्तविक बाधाएं"
+      "संवैधानिक/वैधानिक आयाम (संबंधित अनुच्छेद अथवा अधिनियम सहित)",
+      "न्यायिक दृष्टिकोण एवं आयोगों की सिफारिशें (सर्वोच्च न्यायालय निर्णय अथवा द्वितीय प्रशासनिक सुधार आयोग)",
+      "प्रशासनिक एवं नीतिगत चुनौतियाँ"
     ],
-    "state_value_add": "उत्तर प्रदेश/बिहार/मध्य प्रदेश/राजस्थान के विशेष संदर्भ में शासन एवं नीतिगत प्रभाव।",
-    "conclusion": "संतुलित, व्यावहारिक एवं भविष्योन्मुखी समाधान।",
-    "pyq_reference": "सटीक विगत वर्ष प्रश्न (PYQ) संदर्भ (उदा. UPSC Mains 2021 GS-2).",
+    "state_value_add": "उत्तर प्रदेश/बिहार/मध्य प्रदेश/राजस्थान के शासन एवं ग्रामीण विकास के संदर्भ में विशिष्ट विश्लेषण।",
+    "conclusion": "संतुलित, व्यावहारिक एवं भविष्योन्मुखी निष्कर्ष।",
+    "pyq_reference": "सटीक विगत वर्ष प्रश्न (PYQ) संदर्भ (उदा. UPSC Mains 2022 GS-2 अथवा BPSC Mains GS-2).",
     "mcq_data": {
-      "question": "कथन आधारित प्रीलिम्स प्रश्न (कथन 1, 2, 3 रूप में)।",
-      "options": {
-        "A": "केवल 1 और 2",
-        "B": "केवल 2 और 3",
-        "C": "केवल 1 और 3",
-        "D": "1, 2 और 3 सभी"
-      },
+      "question": "कथन आधारित उच्च स्तरीय प्रीलिम्स प्रश्न (कथन 1, 2, 3 रूप में)।",
+      "options": {"A": "केवल 1 और 2", "B": "केवल 2 और 3", "C": "केवल 1 और 3", "D": "1, 2 और 3 सभी"},
       "answer": "B",
-      "trap_explanation": "अवधारणात्मक व्याख्या कि कौन सा कथन परीक्षक का भ्रामक जाल है और सही उत्तर क्या है।"
+      "trap_explanation": "परीक्षक के भ्रामक जाल (trap) का विश्लेषण और सही विकल्प की स्पष्ट व्याख्या।"
     }
   }
 }
 """
 
-def fetch_feed_with_browser_headers(url):
+def fetch_feed_items(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*'
     }
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=15) as response:
+    with urllib.request.urlopen(req, timeout=12) as response:
         return feedparser.parse(response.read())
 
 def run_crawler():
-    print("Initiating CivilPulse Autonomous Ingestion Engine...")
-    total_committed = 0
+    print("Initiating CivilPulse Deep-Thinking Intelligence Engine...")
+    
+    # We want strictly 4 to 6 highest-yield approved topics per day
+    TARGET_TOPICS_LIMIT = 5
+    approved_topics_count = 0
 
-    for feed_meta in FEEDS:
-        print(f"\nScanning Channel: {feed_meta['name']}")
+    for feed_info in FEEDS:
+        if approved_topics_count >= TARGET_TOPICS_LIMIT:
+            print(f"Target of {TARGET_TOPICS_LIMIT} high-yield topics reached for the day.")
+            break
+
+        print(f"\n--- Checking: {feed_info['source']} ({feed_info['section']}) ---")
         try:
-            feed = fetch_feed_with_browser_headers(feed_meta["url"])
-            print(f"Total live entries detected: {len(feed.entries)}")
+            feed = fetch_feed_items(feed_info["url"])
+            print(f"Items found: {len(feed.entries)}")
         except Exception as e:
-            print(f"Feed connection failed for {feed_meta['name']}: {e}")
+            print(f"Feed connection issue for {feed_info['source']}: {e}")
             continue
 
-        # Top 3 daily pieces
+        # Check top 3 fresh candidates from each feed
         for entry in feed.entries[:3]:
+            if approved_topics_count >= TARGET_TOPICS_LIMIT:
+                break
+
             title = entry.title
             summary = getattr(entry, 'summary', '')
-            print(f"Synthesizing: {title}")
+            print(f"Evaluating: {title}")
 
-            article_text = f"Title: {title}\nSummary / Context:\n{summary}"
+            content_payload = f"Source: {feed_info['source']} | Section: {feed_info['section']}\nTitle: {title}\nSummary / Context: {summary}"
 
             try:
                 response = client.models.generate_content(
                     model="gemini-3.8-flash",
-                    contents=SYSTEM_PROMPT + "\n\nTarget Article:\n" + article_text,
+                    contents=SYSTEM_PROMPT + "\n\nTarget Article:\n" + content_payload,
                     config={"response_mime_type": "application/json"}
                 )
 
-                payload = json.loads(response.text.strip())
+                data = json.loads(response.text.strip())
 
-                if payload.get("status") == "APPROVED":
-                    # English Card Ingestion
-                    en = payload["en"]
+                if data.get("status") == "APPROVED":
+                    # English Insertion
+                    en = data["en"]
                     supabase.table("daily_cards").insert({
                         "medium": "en",
                         "topic": en["topic"],
@@ -168,8 +173,8 @@ def run_crawler():
                     }).execute()
                     print(f"✓ Committed [EN]: {en['topic']}")
 
-                    # Hindi Card Ingestion
-                    hi = payload["hi"]
+                    # Hindi Insertion
+                    hi = data["hi"]
                     supabase.table("daily_cards").insert({
                         "medium": "hi",
                         "topic": hi["topic"],
@@ -185,14 +190,16 @@ def run_crawler():
                     }).execute()
                     print(f"✓ Committed [HI]: {hi['topic']}")
 
-                    total_committed += 2
+                    approved_topics_count += 1
                 else:
-                    print(f"— Discarded (Off-syllabus / Low exam relevance)")
+                    print("— Discarded by syllabus gatekeeper.")
 
             except Exception as e:
-                print(f"Ingestion error on '{title}': {e}")
+                print(f"Processing error on '{title}': {e}")
 
-    print(f"\nDone. Total verified cards inserted into Supabase: {total_committed}")
+    print(f"\n=======================================================")
+    print(f"Pipeline Complete. Selected {approved_topics_count} core topics (Total {approved_topics_count * 2} bilingual cards committed).")
+    print(f"=======================================================")
 
 if __name__ == "__main__":
     run_crawler()
