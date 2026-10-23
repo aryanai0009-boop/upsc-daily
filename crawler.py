@@ -12,7 +12,7 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 if not all([GEMINI_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
     raise ValueError("Missing critical environment variables!")
 
-# Naya Official Google GenAI Client
+# Official Google GenAI Client
 client = genai.Client(api_key=GEMINI_KEY)
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
