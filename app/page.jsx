@@ -45,17 +45,20 @@ export default function CivilPulseFeed() {
     : cards.filter(c => c.upsc_tags?.some(t => t.includes(activeFilter)))
 
   return (
-    <div className="min-h-screen bg-[#070A13] text-[#E2E8F0] selection:bg-amber-500 selection:text-black font-sans pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#070A13]/95 backdrop-blur-md border-b border-slate-800/90 px-4 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#070A13] text-[#E2E8F0] selection:bg-amber-500 selection:text-black font-sans pb-20">
+      
+      {/* 1. Header with CivilPulse Branding */}
+      <header className="sticky top-0 z-50 bg-[#070A13]/95 backdrop-blur-md border-b border-slate-800/90 px-4 py-3.5">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 flex items-center justify-center shadow-xl shadow-amber-500/25 ring-1 ring-amber-400/50">
-              <span className="text-black font-black text-2xl tracking-tighter">CP</span>
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/25 ring-1 ring-amber-400/40">
+              <span className="text-black font-black text-xl tracking-tighter">CP</span>
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">CivilPulse</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  CivilPulse
+                </h1>
                 <span className="text-[10px] bg-amber-400/10 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-400/30">
                   EXAMINER CALIBRATED
                 </span>
@@ -85,25 +88,26 @@ export default function CivilPulseFeed() {
         </div>
       </header>
 
-      {/* Trust & Proof Bar */}
+      {/* 2. Psychological Opportunity Cost Banner */}
       <div className="border-b border-slate-800/70 bg-[#0A0E1C] px-4 py-2.5 text-xs">
-        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-3 text-slate-400">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3 text-slate-400">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              1,000+ Topper Copy Answer Framework Active
+              1,000+ Topper Copy Matrix Active
             </span>
             <span className="text-slate-700">|</span>
             <span className="hidden sm:inline">The Hindu & The Indian Express Filtered</span>
           </div>
           <div className="font-mono text-amber-400/90 text-[11px] font-semibold">
-            Execution Target: 15 Mins
+            Daily Execution: 15 Mins
           </div>
         </div>
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 pt-6 space-y-6">
-        {/* Dynamic Paper Tabs with Live Auto-Updating Counters */}
+      <main className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
+        
+        {/* Dynamic Paper Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {['ALL', 'GS-1', 'GS-2', 'GS-3', 'GS-4'].map(paper => (
             <button
@@ -135,7 +139,7 @@ export default function CivilPulseFeed() {
           </div>
         ) : filteredCards.length === 0 ? (
           <div className="py-20 text-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/30 p-8 space-y-2">
-            <p className="text-base font-bold text-slate-200">No updates in this paper category today.</p>
+            <p className="text-base font-bold text-slate-200">No updates in this category for today.</p>
             <p className="text-xs text-slate-400">Strict relevance filtering excludes non-syllabus news items.</p>
           </div>
         ) : (
@@ -163,7 +167,6 @@ export default function CivilPulseFeed() {
                   <span className="text-[11px] font-mono text-slate-400">{card.publish_date || 'Today'}</span>
                 </div>
 
-                {/* Original Newspaper Lead Headline */}
                 {card.original_headline && (
                   <p className="text-[11px] text-slate-400 italic">
                     Original Lead: "{card.original_headline}"
@@ -185,7 +188,7 @@ export default function CivilPulseFeed() {
                   </h2>
                 </div>
 
-                {/* Frosted Glass Paywall Overlay */}
+                {/* Frosted Glass Paywall on Card 3 Onwards */}
                 {isPaywalled ? (
                   <div className="relative pt-3">
                     <div className="filter blur-md select-none pointer-events-none opacity-30 space-y-4">
@@ -194,24 +197,30 @@ export default function CivilPulseFeed() {
                       <div className="h-24 bg-slate-800 rounded-xl"></div>
                     </div>
 
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-t from-[#0C101F] via-[#0C101F]/90 to-transparent">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-t from-[#0C101F] via-[#0C101F]/95 to-transparent">
                       <div className="max-w-md space-y-3.5">
                         <span className="text-xs uppercase font-black tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
                           🔒 Pro Academic Vault Locked
                         </span>
                         <h3 className="text-lg font-bold text-white">
-                          Unlock Complete Daily Mains Blueprints, Prelims Traps & Top 25 Hit-Lists
+                          Unlock Full Intelligence, 100+ Diagrams & Top 25 Hit-List
                         </h3>
                         <p className="text-xs text-slate-400 leading-relaxed">
-                          Equip your answers with 1,000+ topper copy schematics, 500+ data banks, and distractor decoders.
+                          Daily 2 cards are free. Serious rankers unlock remaining daily issues, 500+ Mains Data Bank, and Prelims Traps.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-2.5 pt-2 justify-center">
-                          <button className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-5 py-3 rounded-xl shadow-lg shadow-amber-500/20 transition-all">
-                            Unlock 360° Ranker Pass @ ₹3,499
-                          </button>
-                          <button className="bg-slate-900 border border-slate-700 text-slate-300 text-xs px-4 py-3 rounded-xl hover:bg-slate-800 transition-all">
+                          <a
+                            href="#pricing-matrix"
+                            className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-5 py-3 rounded-xl shadow-lg shadow-amber-500/20 transition-all text-center"
+                          >
+                            ⭐ Get 360° Ranker Pass @ ₹3,499
+                          </a>
+                          <a
+                            href="#pricing-matrix"
+                            className="bg-slate-900 border border-slate-700 text-slate-300 text-xs px-4 py-3 rounded-xl hover:bg-slate-800 transition-all text-center"
+                          >
                             Daily Intel Pass @ ₹999
-                          </button>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -253,7 +262,7 @@ export default function CivilPulseFeed() {
                       </div>
                     </div>
 
-                    {/* Mains Ready Section (I-B-C) */}
+                    {/* Mains Section (I-B-C) */}
                     <div className="space-y-3 text-xs">
                       <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5">
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5 mb-1.5">
@@ -286,12 +295,11 @@ export default function CivilPulseFeed() {
                         </div>
                       )}
 
-                      {/* Micro-Diagram / Visual Schematic Container */}
                       {card.micro_diagram_schematic && (
                         <div className="bg-[#060912] border border-slate-800 rounded-xl p-3.5 space-y-2">
                           <div className="flex items-center justify-between text-[10px]">
                             <span className="font-bold uppercase tracking-wider text-amber-400">
-                              📐 High-Yield Micro-Diagram (45-Sec Drawing)
+                              📐 Micro-Diagram Schematic (45-Sec Exam Hall Drawing)
                             </span>
                             <span className="text-slate-500 font-mono">
                               {card.micro_diagram_schematic.diagram_type}
@@ -391,7 +399,7 @@ export default function CivilPulseFeed() {
                                   : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
                               }`}>
                                 <div className="font-bold flex items-center gap-1.5 mb-1">
-                                  {isCorrect ? '✅ Well done! Correct Answer.' : `❌ Incorrect (Correct: Option [${card.mcq_data.answer}])`}
+                                  {isCorrect ? '✅ Correct! Official standard logic verified.' : `❌ Incorrect (Correct: Option [${card.mcq_data.answer}])`}
                                 </div>
                                 <p className="text-slate-300 text-[11px] leading-relaxed">
                                   {card.mcq_data.trap_explanation}
@@ -408,7 +416,194 @@ export default function CivilPulseFeed() {
             )
           })
         )}
+
+        {/* 3. The Grand Slam ₹48,000 Matrix & Comparison Section */}
+        <section id="pricing-matrix" className="pt-10 space-y-8">
+          
+          {/* Opportunity Cost Psychology Box */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border border-amber-500/30 rounded-2xl p-6 space-y-3">
+            <span className="text-[10px] font-black tracking-widest uppercase text-amber-400 block">
+              THE BRUTAL REALITY OF ONE WASTED ATTEMPT
+            </span>
+            <h3 className="text-lg sm:text-xl font-black text-white">
+              A 1-Year Prep Delay Costs You ₹12,30,000+ Minimum.
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Living rent in Mukherjee Nagar/Prayagraj (~₹1.8 Lakh) + 12 months of delayed Group-A Officer Basic Salary (~₹10.5 Lakh). 
+              The <strong className="text-amber-400">360° Ranker Pass costs ₹3,499/yr (₹9.5/day)</strong>. 
+              Do not risk a full year of your career to save ₹9 a day on random free Telegram PDFs.
+            </p>
+          </div>
+
+          {/* Tabular Comparison: Free vs ₹999 vs ₹3,499 */}
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white">Choose Your Strategic Advantage</h2>
+              <p className="text-xs text-slate-400">Directly calibrated with UPSC CSE & State PSC marking benchmarks</p>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-[#0A0E1C] shadow-2xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/60">
+                    <th className="p-4 text-slate-300 font-bold">Feature / Module</th>
+                    <th className="p-4 text-slate-400 font-semibold">Free Preview</th>
+                    <th className="p-4 text-slate-300 font-semibold">Daily Intel (₹999)</th>
+                    <th className="p-4 bg-amber-500/10 text-amber-300 font-black border-l border-r border-amber-500/30">
+                      ⭐ 360° Ranker (₹3,499)
+                      <span className="block text-[9px] font-mono text-amber-400/80 font-normal mt-0.5">RECOMMENDED FOR SERIOUS RANKERS</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tr>
+                    <td className="p-4 font-medium">Daily Verified News Cards</td>
+                    <td className="p-4 text-slate-500">First 2 Cards Only</td>
+                    <td className="p-4 text-slate-200">All 4–5 Cards Daily</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">All Cards + Full 365-Day Archive</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Sourcing & Lead Headline Tracker</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">1-Click Bilingual Switcher (EN/हिन्दी)</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">30-Word Ready Mains Intros</td>
+                    <td className="p-4 text-slate-500">2 Daily</td>
+                    <td className="p-4 text-slate-200">All Daily Cards</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">All Daily + 500+ Static Topic Bank</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Ready Mains Body & 25-Word Conclusion</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-emerald-400">✔ Daily News Only</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">✔ 1,000+ Topper Copy Frameworks</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">100 High-Yield Micro-Diagrams Bank</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-amber-300 font-black border-l border-r border-amber-500/20">✔ 100+ SVG/ASCII Schematics</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">2,500 Prelims Trap Bank (Distractor Decoder)</td>
+                    <td className="p-4 text-slate-500">1 MCQ / Day</td>
+                    <td className="p-4 text-slate-200">Daily MCQs Only</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">✔ Full 2,500+ Trap Flashcards Vault</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Top 25 Probable Questions (Prelims & Mains)</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-amber-300 font-black border-l border-r border-amber-500/20">✔ Full Hit-List Included Free</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Sunday Printable Revision Digest (A4 PDF)</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Instant Weekly PDF Download</td>
+                  </tr>
+                  <tr className="bg-slate-900/40">
+                    <td className="p-4 font-bold text-white">Daily Cost Equivalent</td>
+                    <td className="p-4 font-mono text-slate-400">₹0</td>
+                    <td className="p-4 font-mono text-slate-200">₹2.7 / day</td>
+                    <td className="p-4 bg-amber-500/10 font-mono text-amber-300 font-bold border-l border-r border-amber-500/30">
+                      ₹9.5 / day (Chai Cost)
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Grand Slam Value Matrix (Claimed ₹48,000 for ₹3,499) */}
+          <div className="bg-[#0C101F] border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                  THE GRAND SLAM ASSET VAULT
+                </span>
+                <h3 className="text-base font-bold text-white">
+                  Everything Included in 360° Ranker Pass (Total Real Value: ₹48,000)
+                </h3>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-400 line-through">₹48,000</span>
+                <span className="text-xl font-black text-amber-400 ml-2">₹3,499/yr</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-white block mb-0.5">1. 5:00 AM Dual-Paper Intel Engine (Bilingual)</strong>
+                <p className="text-slate-400 text-[11px]">Daily Hindu & Express 15-min ready execution. (Value: ₹6,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-white block mb-0.5">2. 3-Year Cross-Exam PYQ Theme Vault</strong>
+                <p className="text-slate-400 text-[11px]">UPSC + UPPSC/BPSC standard model answers. (Value: ₹7,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-white block mb-0.5">3. 500+ "Plug-and-Play" Mains Data Bank</strong>
+                <p className="text-slate-400 text-[11px]">Committees, Articles, NITI & RBI data ledger. (Value: ₹5,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-white block mb-0.5">4. 2,500 Prelims Trap Bank (Distractor Decoder)</strong>
+                <p className="text-slate-400 text-[11px]">Spaced-repetition flashcards to eliminate negative marking. (Value: ₹6,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-white block mb-0.5">5. State PSC Mastery (UPPSC GS-5/6, BPSC GS-2)</strong>
+                <p className="text-slate-400 text-[11px]">Dedicated state administration modules. (Value: ₹6,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-amber-300 block mb-0.5">⭐ 6. 100 High-Yield Micro-Diagrams Bank</strong>
+                <p className="text-slate-400 text-[11px]">Exam-hall reproducible SVG/ASCII frameworks. (Value: ₹6,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-amber-300 block mb-0.5">⭐ 7. Printable Sunday Revision Digest</strong>
+                <p className="text-slate-400 text-[11px]">4-page A4 monochrome printable weekly digest. (Value: ₹5,000)</p>
+              </div>
+              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <strong className="text-amber-300 block mb-0.5">⭐ 8. Top 25 Probables Hit-List (Prelims + Mains)</strong>
+                <p className="text-slate-400 text-[11px]">Examiner-mindset reverse-engineered questions. (Value: ₹7,000)</p>
+              </div>
+            </div>
+
+            <div className="pt-2 text-center">
+              <button className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-black font-black text-sm px-8 py-3.5 rounded-xl shadow-xl shadow-amber-500/25 transition-all">
+                Claim 360° Ranker Pass at ₹3,499 / Year
+              </button>
+            </div>
+          </div>
+        </section>
+
       </main>
+
+      {/* 4. Professional Legal, Compliance & No-Refund Shield */}
+      <footer className="mt-16 border-t border-slate-800/80 bg-[#05070E] py-8 px-4 text-slate-500 text-[11px] leading-relaxed">
+        <div className="max-w-4xl mx-auto space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+            <span className="font-bold text-slate-300 text-xs">CivilPulse Legal & Compliance Framework</span>
+            <span className="font-mono text-[10px]">Sec 52 Fair Dealing Compliant</span>
+          </div>
+          <p>
+            <strong>Fair Dealing & Pedagogical Citation Notice:</strong> CivilPulse publishes independent pedagogical evaluation frameworks, administrative syntheses, and syllabus mappings. References to newspapers (such as <em>The Hindu</em> or <em>The Indian Express</em>) are strictly for academic source attribution and research reference under Section 52 of the Indian Copyright Act, 1957.
+          </p>
+          <p>
+            <strong>Statutory Non-Affiliation Disclaimer:</strong> CivilPulse is an independent educational platform and is not affiliated, endorsed, or connected with the Union Public Service Commission (UPSC), any State Public Service Commission (UPPSC, BPSC, RPSC, MPPSC), or any publishing houses.
+          </p>
+          <p>
+            <strong>Digital Access & Non-Refund Policy:</strong> CivilPulse provides immediate free access to daily sample cards to verify platform utility. Upon purchase of the Daily Intel Pass or 360° Ranker Pass, full unhindered access to proprietary databases and vaults is activated instantly. Consequently, all digital subscription transactions are final, non-cancellable, and strictly non-refundable.
+          </p>
+        </div>
+      </footer>
+
     </div>
   )
 }
