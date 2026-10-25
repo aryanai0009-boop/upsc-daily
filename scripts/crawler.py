@@ -1,96 +1,69 @@
-import os
-import json
-import datetime
-import requests
-import google.generativeai as genai
-from supabase import create_client
-
-# 1. API Keys uthana
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
-
-genai.configure(api_key=GEMINI_KEY)
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# 2. Indian Standard Time (IST) se Current Date nikalna
-ist_now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
-today_date = ist_now.strftime('%Y-%m-%d')
-
-print(f"Executing CivilPulse Automation for Date: {today_date}")
-
-# 3. Gemini Prompt for 10-Feature UPSC News Processing
 prompt = f"""
-You are the senior chief editorial mentor for CivilPulse UPSC CSE intelligence.
-Analyze today's ({today_date}) top national editorial themes from The Hindu and The Indian Express.
+You are the Chief Senior UPSC Editorial Evaluator for CivilPulse.
+Analyze the top 5 high-yield national editorial and policy developments from The Hindu and The Indian Express for today's date: {today_date}.
 
-Generate exactly 5 comprehensive JSON objects in a valid JSON list. Each object MUST strictly follow this exact schema:
-[
-  {{
-    "publish_date": "{today_date}",
-    "medium": "en",
-    "source_newspaper": "The Hindu / Indian Express",
-    "newspaper_page": "Page 10",
-    "topic": "High-yield analytical UPSC headline",
-    "original_headline": "Actual newspaper article lead",
-    "upsc_tags": ["GS-2: Topic Name", "Polity & Governance"],
-    "state_psc_tags": ["UPPSC GS-5: Governance and Administrative Structure"],
-    "simple_summary_points": [
-      "Point 1: Concrete factual crux of the news.",
-      "Point 2: Core institutional or constitutional issue.",
-      "Point 3: Direct administrative or developmental consequence."
-    ],
-    "intro": "Ready-made Mains intro adhering to standard 25-30 words format.",
-    "ready_to_use_body": {{
-      "significance": [
-        {{
-          "heading": "Direct Constitutional/Economic Significance",
-          "explanation": "Topper-level conceptual explanation.",
-          "real_example": "Concrete Indian case, committee or scheme"
-        }}
-      ],
-      "challenges": [
-        {{
-          "heading": "Structural Bottleneck",
-          "explanation": "Critical evaluation of the issue.",
-          "real_example": "Official data point or observed deficit"
-        }}
-      ],
-      "way_forward": [
-        {{
-          "heading": "Strategic Policy Solution",
-          "explanation": "Actionable administrative recommendation.",
-          "real_example": "Second ARC or NITI Aayog policy guideline"
-        }}
-      ]
-    }},
-    "pyq_reference": "UPSC Mains 2022 GS-2: Corresponding direct question.",
-    "conclusion": "Future-oriented balanced conclusion with constitutional value.",
-    "mcq_data": {{
-      "question": "3-statement examiner trap prelims question:",
-      "options": {{
-        "A": "1 only",
-        "B": "2 and 3 only",
-        "C": "1 and 3 only",
-        "D": "1, 2 and 3"
+CRITICAL MANDATES:
+1. NO PLACEHOLDERS: Do not use labels like "Significance (Mentioned in News)" inside values.
+2. RELEVANCE LOCK: The PYQ MUST strictly match the subject matter of the specific news article. If news is Economy (GS-3), the PYQ must be an actual UPSC GS-3 Economy question.
+3. REAL DATA ONLY: Every significance, challenge, and way forward point must have actual names of committees, articles, policies, or data points in "real_example".
+4. OUTPUT FORMAT: Return ONLY a valid JSON list of exactly 5 card objects.
+
+Schema for each object:
+{{
+  "publish_date": "{today_date}",
+  "medium": "en",
+  "source_newspaper": "The Hindu / Indian Express",
+  "newspaper_page": "Page 1 or Editorial Page",
+  "topic": "Precise Analytical UPSC Topic Headline",
+  "original_headline": "Actual journalistic headline of the news",
+  "upsc_tags": ["GS-Paper: Explicit Topic Title"],
+  "state_psc_tags": ["UPPSC/BPSC GS Alignment Tag"],
+  "simple_summary_points": [
+    "Concrete factual summary point 1.",
+    "Constitutional or macroeconomic core point 2.",
+    "Policy or governance consequence point 3."
+  ],
+  "intro": "25-30 words crisp topper-grade Mains introduction starting with direct definition or context.",
+  "ready_to_use_body": {{
+    "significance": [
+      {{
+        "heading": "Direct Structural Dimension",
+        "explanation": "Topper-style multi-dimensional analysis connecting theory with current event.",
+        "real_example": "Exact Committee/Article/Court ruling/Data"
       }},
-      "answer": "A",
-      "trap_explanation": "Trap analysis explaining distractor qualifiers."
-    }}
+      {{
+        "heading": "Socio-Economic or Strategic Multiplier",
+        "explanation": "Downstream impacts on administrative or economic delivery.",
+        "real_example": "Specific government scheme or official index indicator"
+      }}
+    ],
+    "challenges": [
+      {{
+        "heading": "Institutional Bottleneck",
+        "explanation": "Critical evaluation of implementation deficit.",
+        "real_example": "Empirical ground challenge or audit observation"
+      }}
+    ],
+    "way_forward": [
+      {{
+        "heading": "Actionable Administrative Reform",
+        "explanation": "Concrete policy solution directly aligned with UPSC scoring rubric.",
+        "real_example": "Second ARC recommendation, NITI Aayog Strategy, or Law Commission Report"
+      }}
+    ]
+  }},
+  "pyq_reference": "UPSC Mains [Year] GS-[Paper]: [Verbatim Relevant Past Question]",
+  "conclusion": "Balanced, future-oriented, constitutional way-forward concluding sentence (25 words).",
+  "mcq_data": {{
+    "question": "Regarding the topic above, consider the following statements:\\n1. [Statement with verifiable fact]\\n2. [Statement with distractor qualifier]\\n\\nWhich of the statements given above is/are correct?",
+    "options": {{
+      "A": "1 only",
+      "B": "2 only",
+      "C": "Both 1 and 2",
+      "D": "Neither 1 nor 2"
+    }},
+    "answer": "A",
+    "trap_explanation": "Examiner Trap Analysis: Unmask the specific trap word (e.g. exclusively, all, mandatory)."
   }}
-]
-
-Return ONLY the raw JSON list. No markdown backticks, no explanations.
+}}
 """
-
-model = genai.GenerativeModel("gemini-1.5-flash")
-response = model.generate_content(prompt)
-cleaned_text = response.text.replace("```json", "").replace("```", "").strip()
-
-news_items = json.loads(cleaned_text)
-
-# 4. Supabase Database me Insert karna
-for item in news_items:
-    supabase.table("daily_cards").insert(item).execute()
-
-print(f"Successfully inserted {len(news_items)} intelligence cards into Supabase for {today_date}!")
