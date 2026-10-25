@@ -15,36 +15,39 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export default function CivilPulseFeed() {
   const [cards, setCards] = useState([])
+  const [availableDates, setAvailableDates] = useState([])
+  const [selectedDate, setSelectedDate] = useState('ALL')
   const [medium, setMedium] = useState('en')
   const [activeFilter, setActiveFilter] = useState('ALL')
-  const [activeProTab, setActiveProTab] = useState('FODDER')
   const [loading, setLoading] = useState(true)
   const [selectedAnswers, setSelectedAnswers] = useState({})
   const [revealedMCQ, setRevealedMCQ] = useState({})
   
-  // Real-Time Persistent User Profile
   const [userProfile, setUserProfile] = useState({
     isLoggedIn: false,
-    id: '',
     email: '',
-    planType: 'FREE', // 'FREE' | 'DAILY_INTEL' | '360_RANKER'
+    planType: 'FREE',
     referralCode: '',
     referralCount: 0
   })
 
-  // Sync Auth State & Handle Persistent Google Login
+  const [authEmail, setAuthEmail] = useState('')
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMessage, setAuthMessage] = useState('')
+
+  // Sync Auth State
   useEffect(() => {
     async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        await syncUserProfile(session.user)
+        syncUserProfile(session.user)
       }
 
-      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (_, currentSession) => {
         if (currentSession?.user) {
-          await syncUserProfile(currentSession.user)
+          syncUserProfile(currentSession.user)
         } else {
-          setUserProfile({ isLoggedIn: false, id: '', email: '', planType: 'FREE', referralCode: '', referralCount: 0 })
+          setUserProfile({ isLoggedIn: false, email: '', planType: 'FREE', referralCode: '', referralCount: 0 })
         }
       })
 
@@ -52,100 +55,91 @@ export default function CivilPulseFeed() {
     }
 
     async function syncUserProfile(user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
         setUserProfile({
           isLoggedIn: true,
-          id: user.id,
           email: user.email,
           planType: profile.plan_type || 'FREE',
           referralCode: profile.referral_code || '',
           referralCount: profile.referral_count || 0
         })
-      } else {
-        // Auto-provision initial profile if signing in via Google for first time
-        const cleanRef = user.email.split('@')[0].toUpperCase().replace(/[^A-Z0-9]/g, '') + '-RANK'
-        await supabase.from('profiles').insert({
-          id: user.id,
-          email: user.email,
-          plan_type: 'FREE',
-          referral_code: cleanRef
-        })
-        setUserProfile({
-          isLoggedIn: true,
-          id: user.id,
-          email: user.email,
-          planType: 'FREE',
-          referralCode: cleanRef,
-          referralCount: 0
-        })
       }
     }
-
     initAuth()
   }, [])
 
-  // Load Daily Feed Cards
+  // Fetch Feed & Populate Available Dates
   useEffect(() => {
-    async function fetchFeed() {
+    async function fetchCards() {
       setLoading(true)
       const { data, error } = await supabase
         .from('daily_cards')
         .select('*')
         .eq('medium', medium)
+        .order('publish_date', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(40)
 
-      if (!error && data) setCards(data)
+      if (!error && data) {
+        setCards(data)
+        const uniqueDates = Array.from(new Set(data.map(c => c.publish_date).filter(Boolean)))
+        setAvailableDates(uniqueDates)
+      }
       setLoading(false)
     }
-    fetchFeed()
+    fetchCards()
   }, [medium])
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : ''
-      }
-    })
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-  }
-
-  // Access Condition: Free users get index 0 and 1 only.
-  const isCardPaywalled = (idx) => {
-    if (userProfile.planType === '360_RANKER' || userProfile.planType === 'DAILY_INTEL') {
-      return false
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
+      })
+      if (error) setShowAuthModal(true)
+    } catch {
+      setShowAuthModal(true)
     }
+  }
+
+  const handleMagicLogin = async (e) => {
+    e.preventDefault()
+    if (!authEmail) return
+    setAuthMessage('Sending secure login link...')
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail,
+      options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
+    })
+    setAuthMessage(error ? `Error: ${error.message}` : 'Login link sent to your email! Click it to stay logged in.')
+  }
+
+  const isCardPaywalled = (idx) => {
+    if (userProfile.planType === '360_RANKER' || userProfile.planType === 'DAILY_INTEL') return false
     return idx >= 2
   }
 
-  const isProUser = userProfile.planType === '360_RANKER'
+  // Filter Cards by Date and GS Category
+  const dateFiltered = selectedDate === 'ALL' 
+    ? cards 
+    : cards.filter(c => c.publish_date === selectedDate)
+
+  const finalCards = activeFilter === 'ALL'
+    ? dateFiltered
+    : dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes(activeFilter)))
 
   const filterCounts = {
-    ALL: cards.length,
-    'GS-1': cards.filter(c => c.upsc_tags?.some(t => t.includes('GS-1'))).length,
-    'GS-2': cards.filter(c => c.upsc_tags?.some(t => t.includes('GS-2'))).length,
-    'GS-3': cards.filter(c => c.upsc_tags?.some(t => t.includes('GS-3'))).length,
-    'GS-4': cards.filter(c => c.upsc_tags?.some(t => t.includes('GS-4'))).length,
+    ALL: dateFiltered.length,
+    'GS-1': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-1'))).length,
+    'GS-2': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-2'))).length,
+    'GS-3': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-3'))).length,
+    'GS-4': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-4'))).length,
   }
 
-  const filteredCards = activeFilter === 'ALL'
-    ? cards
-    : cards.filter(c => c.upsc_tags?.some(t => t.includes(activeFilter)))
-
   return (
-    <div className="min-h-screen bg-[#060811] text-[#E2E8F0] selection:bg-amber-500 selection:text-black font-sans pb-24 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#070913] text-[#E2E8F0] font-sans pb-24 selection:bg-amber-500 selection:text-black relative">
       
-      {/* 1. Dynamic Anti-Leak Forensic Steganographic Watermark Layer */}
+      {/* Forensic Anti-Leak Watermark */}
       <div className="fixed inset-0 pointer-events-none z-50 select-none overflow-hidden opacity-[0.035] flex flex-wrap gap-24 p-8 transform -rotate-12">
         {Array.from({ length: 48 }).map((_, i) => (
           <span key={i} className="text-xs font-mono text-white tracking-widest uppercase">
@@ -154,8 +148,8 @@ export default function CivilPulseFeed() {
         ))}
       </div>
 
-      {/* 2. Top Executive Navbar with 1-Click Google Auth */}
-      <header className="sticky top-0 z-40 bg-[#060811]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[#070913]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -172,8 +166,7 @@ export default function CivilPulseFeed() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Bilingual Switcher */}
+          <div className="flex items-center gap-2.5">
             <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5">
               <button
                 onClick={() => setMedium('en')}
@@ -196,24 +189,15 @@ export default function CivilPulseFeed() {
               Plans & Perks
             </a>
 
-            {/* Persistent Authentication Container */}
             {userProfile.isLoggedIn ? (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono bg-slate-900 border border-slate-800 text-amber-400 px-2.5 py-1 rounded-lg">
-                  {userProfile.planType}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-slate-400 hover:text-white"
-                  title="Logout"
-                >
-                  ✕
-                </button>
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-[11px] font-mono text-amber-400 font-bold">{userProfile.planType}</span>
               </div>
             ) : (
               <button
                 onClick={handleGoogleLogin}
-                className="flex items-center gap-2 text-xs bg-white hover:bg-slate-100 text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                className="flex items-center gap-1.5 text-xs bg-white hover:bg-slate-100 text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -228,20 +212,62 @@ export default function CivilPulseFeed() {
         </div>
       </header>
 
-      {/* 3. Tracker-Pro Performance Benchmark Strip */}
-      <div className="border-b border-slate-800/80 bg-[#090D1C] px-4 py-2 text-xs text-slate-400">
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Daily Syllabi Screening Active
-            </span>
-            <span className="text-slate-700">|</span>
-            <span className="font-mono text-slate-300 text-[11px]">Daily Execution: 15 Mins</span>
+      {/* Auth Fallback Modal */}
+      {showAuthModal && !userProfile.isLoggedIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0A0D1B] border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4">
+            <h3 className="text-base font-bold text-white">Student Login</h3>
+            <p className="text-xs text-slate-400">Enter your email to receive an instant secure 1-click login link.</p>
+            <form onSubmit={handleMagicLogin} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="aspirant@gmail.com"
+                className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+              />
+              <button type="submit" className="w-full bg-amber-500 text-black font-bold text-xs py-2.5 rounded-xl">
+                Send 1-Click Magic Link
+              </button>
+            </form>
+            {authMessage && <p className="text-[11px] text-amber-300 font-mono">{authMessage}</p>}
+            <button onClick={() => setShowAuthModal(false)} className="text-[11px] text-slate-500 hover:underline block text-center w-full">
+              Close
+            </button>
           </div>
-          <div className="font-mono text-amber-400/90 text-[11px]">
-            Target 2026/27 • Negative Marking Elimination Mode
-          </div>
+        </div>
+      )}
+
+      {/* TRACKER-PRO STYLE DATE ARCHIVE SELECTOR */}
+      <div className="bg-[#0B0E1E] border-b border-slate-800 px-4 py-2.5">
+        <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
+          <span className="text-slate-400 font-mono text-[11px] uppercase mr-1 flex items-center gap-1">
+            📅 Date:
+          </span>
+          <button
+            onClick={() => setSelectedDate('ALL')}
+            className={`px-3 py-1 rounded-lg font-mono font-bold transition-all ${
+              selectedDate === 'ALL'
+                ? 'bg-amber-500 text-black shadow-sm'
+                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            All Dates ({cards.length})
+          </button>
+          {availableDates.map(dateStr => (
+            <button
+              key={dateStr}
+              onClick={() => setSelectedDate(dateStr)}
+              className={`px-3 py-1 rounded-lg font-mono whitespace-nowrap transition-all border ${
+                selectedDate === dateStr
+                  ? 'bg-amber-500 text-black border-amber-400 font-bold shadow-sm'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {dateStr}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -259,7 +285,7 @@ export default function CivilPulseFeed() {
                   : 'bg-slate-900/60 border-slate-800/90 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <span>{paper === 'ALL' ? (medium === 'en' ? 'All Updates' : 'सभी विषय') : paper}</span>
+              <span>{paper === 'ALL' ? (medium === 'en' ? 'All Categories' : 'सभी श्रेणियां') : paper}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                 activeFilter === paper ? 'bg-amber-400 text-black' : 'bg-slate-800 text-slate-400'
               }`}>
@@ -269,29 +295,36 @@ export default function CivilPulseFeed() {
           ))}
         </div>
 
-        {/* FEED SECTION - NOTEBOOK CALIBRATED STRUCTURE */}
+        {/* FEED SECTION */}
         <section className="space-y-6">
           {loading ? (
             <div className="py-24 text-center space-y-3">
               <div className="w-8 h-8 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin mx-auto"></div>
-              <p className="text-xs text-slate-400 font-mono">Running pedagogical gatekeeper algorithms...</p>
+              <p className="text-xs text-slate-400 font-mono">Loading verified examination cards...</p>
             </div>
-          ) : filteredCards.map((card, idx) => {
+          ) : finalCards.length === 0 ? (
+            <div className="py-20 text-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/30 p-8 space-y-2">
+              <p className="text-base font-bold text-slate-200">No cards found for the selected date or paper.</p>
+              <p className="text-xs text-slate-400">Select "All Dates" to browse the full archive.</p>
+            </div>
+          ) : finalCards.map((card, idx) => {
             const paywalled = isCardPaywalled(idx)
             const hasMCQ = card.mcq_data && card.mcq_data.question
             const userChoice = selectedAnswers[card.id]
             const isCorrect = userChoice && card.mcq_data?.answer && userChoice.trim().toUpperCase() === card.mcq_data.answer.trim().toUpperCase()
 
+            // Safe parsing for body items
             const sig = card.ready_to_use_body?.significance || []
             const ch = card.ready_to_use_body?.challenges || []
             const wf = card.ready_to_use_body?.way_forward || []
+            const summaryPoints = card.simple_summary_points || card.crux_points || []
 
             return (
               <article
                 key={card.id || idx}
                 className="bg-[#0A0D1A] border border-slate-800/90 rounded-2xl p-6 shadow-xl relative overflow-hidden space-y-5"
               >
-                {/* 1 & 2. Newspaper, Page, Date & Original Lead */}
+                {/* 1 & 2. Sourcing, Page, Date & Original Headline */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-white bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
@@ -301,7 +334,9 @@ export default function CivilPulseFeed() {
                       {card.newspaper_page || 'Page 10'}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400">Date: {card.publish_date || 'Today'}</span>
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    Date: {card.publish_date || 'Current Edition'}
+                  </span>
                 </div>
 
                 {card.original_headline && (
@@ -325,7 +360,7 @@ export default function CivilPulseFeed() {
                   </h2>
                 </div>
 
-                {/* Paywall Strictly on Card 3 Onwards for Free Users */}
+                {/* Paywall on Card 3 Onwards for Free Users */}
                 {paywalled ? (
                   <div className="relative pt-3">
                     <div className="filter blur-md select-none pointer-events-none opacity-20 space-y-4">
@@ -337,7 +372,7 @@ export default function CivilPulseFeed() {
                         🔒 PRO EXAM VAULT LOCKED
                       </span>
                       <h4 className="text-lg font-bold text-white max-w-sm">
-                        Daily First 2 Cards Free
+                        Daily First 2 Cards are Free Forever
                       </h4>
                       <p className="text-xs text-slate-400 max-w-md mt-1 mb-4">
                         Unlock all remaining daily cards with Daily Intel (₹999/yr) or get all 10 Pro-Vaults with 360° Ranker Pass (₹3,499/yr).
@@ -352,22 +387,26 @@ export default function CivilPulseFeed() {
                   </div>
                 ) : (
                   <>
-                    {/* 4. 3 Points in Simple Summary */}
+                    {/* 4. 3 Points in Simple Summary (Fixed: Renders real points) */}
                     <div className="bg-[#070913] rounded-xl p-4 border border-slate-800/80 space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                         ⚡ 3 POINTS IN SIMPLE SUMMARY (WHAT IS IN NEWS)
                       </span>
-                      <ul className="space-y-1.5 text-xs text-slate-300 leading-relaxed">
-                        {card.simple_summary_points?.map((pt, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="text-amber-400 font-bold mt-0.5">•</span>
-                            <span>{pt}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {summaryPoints.length > 0 ? (
+                        <ul className="space-y-1.5 text-xs text-slate-300 leading-relaxed">
+                          {summaryPoints.map((pt, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-amber-400 font-bold mt-0.5">•</span>
+                              <span>{pt}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">Core issue synthesized in introduction below.</p>
+                      )}
                     </div>
 
-                    {/* 5. Facts / Value Additions (Only when mentioned in news) */}
+                    {/* 5. Facts / Value Additions */}
                     {card.value_additions && card.value_additions.length > 0 && (
                       <div className="bg-slate-900/50 rounded-xl p-3.5 border border-slate-800/80 space-y-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
@@ -394,7 +433,7 @@ export default function CivilPulseFeed() {
                       </p>
                     </div>
 
-                    {/* 7. Ready-to-Use Body (Heading + Explanation + Real World Example) */}
+                    {/* 7. Ready-to-Use Body (Fixed: Renders real headings and examples) */}
                     <div className="bg-[#080B17] border border-slate-800/90 rounded-xl p-4 space-y-4 text-xs">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                         🏛️ READY-TO-USE BODY (HEADING + EXPLANATION + REAL WORLD EXAMPLE)
@@ -459,9 +498,13 @@ export default function CivilPulseFeed() {
                           </div>
                         </div>
                       )}
+
+                      {sig.length === 0 && ch.length === 0 && wf.length === 0 && (
+                        <p className="text-slate-400 text-[11px] italic">Examination dimensions calibrated in PYQ link below.</p>
+                      )}
                     </div>
 
-                    {/* 8. Match PYQ with that News (UPSC & State PCS) */}
+                    {/* 8. Match PYQ with that News */}
                     <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs">
                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 block mb-1">
                         📍 MATCH PYQ OF THAT NEWS (UPSC & STATE PCS)
@@ -483,7 +526,7 @@ export default function CivilPulseFeed() {
                       </div>
                     )}
 
-                    {/* 10. One Prelims MCQ to Test on Basis of News */}
+                    {/* 10. One Prelims MCQ */}
                     {hasMCQ && (
                       <div className="border-t border-slate-800/80 pt-3">
                         <button
@@ -551,7 +594,7 @@ export default function CivilPulseFeed() {
 
       </main>
 
-      {/* Institutional Legal & Statutory Compliance Footer Shield */}
+      {/* Compliance Footer Shield */}
       <footer className="mt-20 border-t border-slate-800/80 bg-[#04060C] py-10 px-4 text-slate-500 text-[11px] leading-relaxed">
         <div className="max-w-5xl mx-auto space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
