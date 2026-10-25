@@ -763,4 +763,392 @@ export default function CivilPulseFeed() {
               <div className="space-y-3 text-xs">
                 <h4 className="font-bold text-white">500+ Micro-Diagram & Schematic Visual Engine</h4>
                 <p className="text-slate-400 text-[11px]">Exam-hall reproducible in under 45 seconds to secure an extra 1.5 marks per question.</p>
-                <div className="bg-black/60 p-4 rounded-xl border border-slate-800 font-mono text-emerald-400 text
+                <div className="bg-black/60 p-4 rounded-xl border border-slate-800 font-mono text-emerald-400 text-[11px] overflow-x-auto">
+                  <pre>{`[Fiscal Devolution Deficit] 
+         │ 
+         ▼ 
+[State Capex Contraction] ──► (Incentive-Linked Transfers) ──► [Sustained GDP Growth]`}</pre>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 3: 2,500 Prelims Trap Bank */}
+            {activeProTab === 'TRAP_BANK' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">2,500 Prelims Trap Bank (Distractor Decoder Engine)</h4>
+                <p className="text-slate-400 text-[11px]">Master question-setter trap patterns (Authority Swaps, Extreme Words, Constitutional Drift).</p>
+                <div className="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-rose-400 font-bold uppercase block mb-1">TRAP PATTERN #14: INSTITUTIONAL MANDATE SWAP</span>
+                  <p className="text-slate-300 text-[11px]">UPSC replaces the statutory authority (e.g. CPCB) with a central ministry to test factual rigor.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 4: Sunday Revision Test */}
+            {activeProTab === 'SUNDAY_TEST' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">Weekly 10-Question Sunday Revision Test</h4>
+                <p className="text-slate-400 text-[11px]">5 High-Yield UPSC standard multi-statement drills + 5 State PSC factual/conceptual questions.</p>
+                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-amber-400 font-bold block">Current Active Test: Week 42 Comprehensive</span>
+                    <span className="text-slate-400 text-[10px]">10 Questions • Detailed Explanations • Benchmarked with Peers</span>
+                  </div>
+                  <button className="bg-amber-500 text-black font-bold px-4 py-2 rounded-lg text-xs">
+                    Start Sunday Drill
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 5: Top 25 Probables Predictor */}
+            {activeProTab === 'PROBABLES' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">Top 25 Probables Predictor (Prelims + Mains)</h4>
+                <p className="text-slate-400 text-[11px]">Predictive examination analysis released 30 days prior to official exam dates.</p>
+                <div className="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                  <span className="text-emerald-400 font-bold">Predictive Match Rate: 84% Historical PYQ Alignment</span>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 6: Theme One-Pagers & Universal Openers */}
+            {activeProTab === 'ONE_PAGERS' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">Syllabus Theme One-Pagers & Universal GS Openers</h4>
+                <p className="text-slate-400 text-[11px]">50 Universal GS Openers covering GS 1 to 4 for instant 30-second answer initiation in the exam hall.</p>
+              </div>
+            )}
+
+            {/* Feature 7: GS-4 Ethics Ledger */}
+            {activeProTab === 'GS4_ETHICS' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">GS-4 Ethics Case Studies & Administrative Dilemma Ledger</h4>
+                <p className="text-slate-400 text-[11px]">Real-world administrative dilemmas extracted from current affairs with Nolan principles and thinker mapping.</p>
+              </div>
+            )}
+
+            {/* Feature 8: State PSC Regional Differentiator */}
+            {activeProTab === 'STATE_DIFF' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">State PSC Specific Regional Differentiator</h4>
+                <p className="text-slate-400 text-[11px]">Dedicated state-level footnotes: UPPSC GS-5/6, BPSC GS-2, and RAS administrative budget points.</p>
+              </div>
+            )}
+
+            {/* Feature 9: 45-Min Emergency Sprint Sheet */}
+            {activeProTab === 'SPRINT_PDF' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">The "45-Minute Emergency Review" PDF</h4>
+                <p className="text-slate-400 text-[11px]">Hyper-compressed 10-page printable sprint sheet for outside-the-hall morning revision.</p>
+              </div>
+            )}
+
+            {/* Feature 10: AIR Consistency Streak & Diagnostic */}
+            {activeProTab === 'DOPAMINE_AIR' && (
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-white">AIR Consistency Streak Matrix & AI Diagnostic</h4>
+                <p className="text-slate-400 text-[11px]">Loss aversion tracking to maintain daily reading momentum with peer performance percentiles.</p>
+                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                  <span className="text-amber-400 font-bold block">Current Benchmark: Top 8% Accuracy</span>
+                  <span className="text-slate-400 text-[10px]">Your trap recognition speed is 22 seconds faster than average peer rankers.</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* SECTION 3: STUDENT SUGGESTION BOX (CROWDSOURCED AI ENGINE) */}
+        <section className="bg-[#0A0D1B] border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div className="border-b border-slate-800 pb-3">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <span>{t.suggestionBoxTitle}</span>
+              <span className="text-[10px] bg-amber-400/10 text-amber-300 px-2 py-0.5 rounded font-mono">PRO ACCESS</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">{t.suggestionDesc}</p>
+          </div>
+
+          <form onSubmit={handleSuggestionSubmit} className="space-y-3">
+            <textarea
+              value={suggestionText}
+              onChange={(e) => setSuggestionText(e.target.value)}
+              placeholder={medium === 'en' ? "Suggest a topic, scheme, or state case study (e.g., 'Add UP Semiconductor Policy 2024 analysis in GS-3')..." : "किसी विषय, योजना या केस स्टडी का सुझाव दें..."}
+              rows={3}
+              className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-400/70"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-emerald-400 font-mono">{suggestionStatus}</span>
+              <button
+                type="submit"
+                className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md"
+              >
+                {t.submitSuggestion}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* SECTION 4: THE HIGH-DOPAMINE ENROLLED-ONLY REFERRAL ENGINE */}
+        <section className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-[#0A0D1B] border border-amber-500/30 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                {t.ambassadorTitle}
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                {t.ambassadorDesc}
+              </h3>
+            </div>
+            <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full">
+              Automated Verification Shield
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+              <strong className="text-white block mb-0.5">{t.friendGets}</strong>
+              <p className="text-slate-400 text-[11px]">{t.friendDiscount}</p>
+            </div>
+            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+              <strong className="text-white block mb-0.5">{t.sales1to4}</strong>
+              <p className="text-slate-400 text-[11px]">{t.sales1to4Desc}</p>
+            </div>
+            <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+              <strong className="text-white block mb-0.5">{t.milestone5}</strong>
+              <p className="text-slate-400 text-[11px]">{t.milestone5Desc}</p>
+            </div>
+          </div>
+
+          {/* Referral Status Block - STRICT RULE: ONLY ENROLLED USERS GET CODES */}
+          {isEnrolled ? (
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] text-slate-400 font-mono block">YOUR ACTIVE AMBASSADOR CODE:</span>
+                <span className="text-base font-mono font-black text-amber-400">{userProfile.referralCode}</span>
+                <span className="text-xs text-slate-400 ml-3">({userProfile.referralCount} Verified Referrals)</span>
+              </div>
+              <button
+                onClick={copyReferral}
+                className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md"
+              >
+                {referralCopied ? t.linkCopied : t.copyInvite}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-slate-900/70 p-4 rounded-xl border border-dashed border-amber-500/40 text-center space-y-2">
+              <p className="text-xs font-semibold text-slate-200">
+                🔒 Referral Ambassador System is strictly locked for Non-Enrolled Students.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                To maintain institutional integrity, you must enroll in any active plan (₹999 or ₹3,499) to generate your unique referral code.
+              </p>
+              <a
+                href="#pricing-matrix"
+                className="inline-block mt-1 text-xs font-bold text-amber-400 hover:underline"
+              >
+                Enroll Now to Activate Ambassador Perks $\rightarrow$
+              </a>
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 5: PRICING COMPARISON MATRIX & DUAL BUY BUTTONS */}
+        <section id="pricing-matrix" className="pt-8 space-y-8">
+          
+          {/* Opportunity Cost Psychology Box */}
+          <div className="bg-[#090D1C] border border-amber-500/40 rounded-2xl p-6 space-y-3">
+            <span className="text-[10px] font-black tracking-widest uppercase text-amber-400 block">
+              {t.oppCostHeader}
+            </span>
+            <h3 className="text-lg sm:text-xl font-black text-white">
+              {t.oppCostTitle}
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {t.oppCostDesc}
+            </p>
+          </div>
+
+          {/* Deep Tabular Comparison */}
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl sm:text-2xl font-black text-white">{t.pricingHeader}</h2>
+              <p className="text-xs text-slate-400">{t.pricingSub}</p>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-[#090D1C] shadow-2xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/80">
+                    <th className="p-4 text-slate-300 font-bold">Feature / Deliverable</th>
+                    <th className="p-4 text-slate-400 font-semibold">Free Preview</th>
+                    <th className="p-4 text-slate-300 font-semibold">Daily Intel (₹999/yr)</th>
+                    <th className="p-4 bg-amber-500/10 text-amber-300 font-black border-l border-r border-amber-500/30">
+                      ⭐ 360° Ranker (₹3,499/yr)
+                      <span className="block text-[9px] font-mono text-amber-400/90 font-normal mt-0.5">MOST POPULAR • ALL 10 ASSETS INCLUDED</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tr>
+                    <td className="p-4 font-medium">Daily Verified News Intelligence</td>
+                    <td className="p-4 text-slate-500">2 Cards / Day Only</td>
+                    <td className="p-4 text-slate-200">All 5–6 Cards Daily</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">All Cards + Full 365-Day Archive</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Sourcing & Exact Edition Page Audit</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">3-Point Simple Context Summary</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">1-Click Bilingual Switcher (EN/हिन्दी)</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Full Topper Body (Headings + Examples)</td>
+                    <td className="p-4 text-emerald-400">✔ Sample Cards</td>
+                    <td className="p-4 text-slate-200">✔ All Daily Cards</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">✔ 1,000+ Topper Frameworks</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Dual Cross-Exam PYQ Linkage (UPSC + State)</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 text-emerald-400">✔ Yes</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Yes</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">500+ Micro-Diagram Visual Engine</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-amber-300 font-black border-l border-r border-amber-500/20">✔ Full 500+ Schematics Vault</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">2,500 Prelims Trap Bank (Distractor Decoder)</td>
+                    <td className="p-4 text-slate-500">1 MCQ / Day</td>
+                    <td className="p-4 text-slate-200">Daily MCQs Only</td>
+                    <td className="p-4 bg-amber-500/5 font-bold text-white border-l border-r border-amber-500/20">✔ Full 2,500+ Trap Flashcards</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Sunday 10-Question High-Dopamine Test</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Included Every Sunday</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Top 25 Probables Predictor (Pre + Mains)</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-amber-300 font-black border-l border-r border-amber-500/20">✔ Included (30 Days Prior)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">Syllabus Theme One-Pagers</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ All 4 GS Papers Mapped</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">GS-4 Ethics Case Study Ledger</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Real-World Dilemmas</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">State PSC Specific Regional Differentiator</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-slate-400">Generic Linkages</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ Dedicated UPPSC & BPSC</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">45-Minute Emergency Review Sheet</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ 10-Page Printable PDF</td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-medium">AIR Consistency Streak & Diagnostic</td>
+                    <td className="p-4 text-rose-500">❌ Locked</td>
+                    <td className="p-4 text-rose-500">❌ Not Included</td>
+                    <td className="p-4 bg-amber-500/5 text-emerald-400 font-bold border-l border-r border-amber-500/20">✔ AI Weak Area Sweeps</td>
+                  </tr>
+                  <tr className="bg-slate-900/60">
+                    <td className="p-4 font-bold text-white">Daily Effective Investment</td>
+                    <td className="p-4 font-mono text-slate-400">₹0</td>
+                    <td className="p-4 font-mono text-slate-200">₹2.7 / day</td>
+                    <td className="p-4 bg-amber-500/10 font-mono text-amber-300 font-bold border-l border-r border-amber-500/30">
+                      ₹9.5 / day (Chai Cost)
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Direct Plan Enrollment Action Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              <div className="bg-[#0C1022] border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-4">
+                <div>
+                  <span className="text-xs uppercase font-mono text-slate-400">{t.intelTier}</span>
+                  <h3 className="text-xl font-bold text-white mt-1">{t.intelTitle}</h3>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    {t.intelDesc}
+                  </p>
+                  <div className="mt-4">
+                    <span className="text-2xl font-black text-white">₹999</span>
+                    <span className="text-xs text-slate-400 ml-1">/ Year (Incl. 18% GST)</span>
+                  </div>
+                </div>
+                <button className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-3 rounded-xl border border-slate-700 transition-all">
+                  Enroll in Daily Intel Pass @ ₹999 / Year
+                </button>
+              </div>
+
+              <div className="bg-[#0E1428] border-2 border-amber-500/80 rounded-2xl p-6 flex flex-col justify-between space-y-4 relative shadow-xl shadow-amber-500/10">
+                <div className="absolute -top-3 right-6 bg-amber-500 text-black text-[10px] font-black uppercase px-3 py-0.5 rounded-full shadow-md">
+                  RECOMMENDED FOR TOP 50 RANKERS
+                </div>
+                <div>
+                  <span className="text-xs uppercase font-mono text-amber-400">{t.rankerTier}</span>
+                  <h3 className="text-xl font-black text-white mt-1">{t.rankerTitle}</h3>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                    {t.rankerDesc}
+                  </p>
+                  <div className="mt-4 flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-amber-400">₹3,499</span>
+                    <span className="text-xs text-slate-400">/ Year (Incl. 18% GST)</span>
+                    <span className="text-xs line-through text-slate-500">₹48,000</span>
+                  </div>
+                </div>
+                <button className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs py-3.5 rounded-xl shadow-lg shadow-amber-500/25 transition-all">
+                  Claim 360° Ranker Pass @ ₹3,499 / Year
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      {/* 6. Professional Legal, Compliance & No-Refund Shield */}
+      <footer className="mt-20 border-t border-slate-800/80 bg-[#04060C] py-10 px-4 text-slate-500 text-[11px] leading-relaxed">
+        <div className="max-w-5xl mx-auto space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+            <span className="font-bold text-slate-300 text-xs">{t.footerLegal}</span>
+            <span className="font-mono text-[10px]">Sec 52 Fair Dealing Compliant • 18% GST Inclusive</span>
+          </div>
+          <p>{t.footerFairDealing}</p>
+          <p>{t.footerDisclaimer}</p>
+          <p>{t.footerRefund}</p>
+        </div>
+      </footer>
+
+    </div>
+  )
+}
