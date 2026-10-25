@@ -1,0 +1,32 @@
+name: CivilPulse Daily News Automation
+
+on:
+  schedule:
+    # 23:30 UTC = Subah 05:00 AM IST
+    - cron: '30 23 * * *'
+  workflow_dispatch: # Isse aap jab chahein manually run kar sakte hain
+
+jobs:
+  run-crawler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-genai supabase feedparser
+
+      - name: Execute Daily News Intelligence Crawler
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python crawler.py
