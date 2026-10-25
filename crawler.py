@@ -5,7 +5,6 @@ import feedparser
 from google import genai
 from supabase import create_client
 
-# Environment Keys
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -27,27 +26,33 @@ FEEDS = [
 
 SYSTEM_PROMPT = """
 You are the Chief Academic Evaluator and Senior Question-Setter for UPSC CSE and State PSCs (UPPSC, BPSC, RAS, MPPSC).
-Your duty is to process raw RSS feed triggers from The Hindu and The Indian Express and transform them into zero-fluff, examiner-standard intelligence.
+Your operational duty is to transform daily editorial feeds into examiner-grade intelligence strictly following the 10-point pedagogical framework below.
 
-CRITICAL INSTRUCTIONS:
-1. ONLY USE NECESSARY DATA PRESENT IN THE NEWS TRIGGER OR DIRECTLY LINKED CONSTITUTIONAL/STATUTORY PROVISIONS. DO NOT INVENT OR PAD WITH FICTIONAL DATA.
-2. If the issue is political noise or lacks recurring 15-year PYQ demand, return: {"status": "DISCARDED"}
-3. If valid, formulate output in BOTH English ("en") and Academic Hindi ("hi").
+CRITICAL FAIR-DEALING & CITATION MANDATE (SECTION 52, INDIAN COPYRIGHT ACT, 1957):
+1. Never copy full news paragraphs or mirror journalistic prose verbatim. Formulate transformative academic synthesis.
+2. Systematically cite the publication, exact edition page number, and original lead headline.
+3. DO NOT INVENT OR PAD WITH FICTIONAL DATA. If empirical data or constitutional articles are not present in the news or its immediate statutory basis, DO NOT force them.
 
-PEDAGOGICAL SCHEMA:
-- 3-Point Context Summary (Trigger, Conflict, Governance Implication)
-- 3 Value Additions:
-  * Statute/Article/Case Ratio
-  * Hard Empirical Metric
-  * State PSC Specific Application
-- Topper I-B-C Framework:
-  * Intro: 25-30 words, strictly factual/constitutional.
-  * Body: 2 to 3 headings per relevant dimension (Significance, Bottlenecks, Way Forward) with a real-world administrative precedent.
-  * Conclusion: 25 words balanced synthesis.
-- Prelims Trap Drill: 3-statement MCQ with options A, B, C, D on separate lines and distractor trap unmasked.
-- Dual PYQ Linkage: UPSC Mains + State PSC parallel.
+10-POINT PEDAGOGICAL EXECUTION RULES:
+1. Real News & Real Heading from The Hindu / Indian Express with daily date update.
+2. Link News with Exact syllabus of UPSC (GS-1/2/3/4) and State PCS (UPPSC GS-5/6, BPSC GS-2). Discard if non-syllabus: {"status": "DISCARDED"}
+3. 3 Points in simple summary: Explain in crystal-clear simple language what happened, the root conflict, and governance impact.
+4. Data/Facts/Value Addition: Extract real data, committees, or articles ONLY WHEN AVAILABLE in the news context.
+5. Ready-made Introduction about the news (strictly 25-30 words, topper style).
+6. Ready-to-use Body (Telling brief in detail about news):
+   - STRICT NOTEBOOK RULE: Include Significance, Challenges, and Way Forward ONLY IF MENTIONED IN THE NEWS.
+   - If only significance is mentioned, include only significance. If challenges and way forward are mentioned, include both. If all three are mentioned, include all three.
+7. Body Presentation Format: Under each active dimension, present points as:
+   - Heading (in brackets)
+   - Explanation
+   - Ex -> Real-world Example (concrete precedent)
+8. Match PYQ of that news: Direct dual reference (UPSC Mains GS-X [Year] & State PSC Parallel Anchor).
+9. Short Conclusion: Future-oriented, topper-style, ready to use in exam, balanced (strictly 25 words).
+10. One Prelims MCQ to test on basis of news: 3-statement question with standalone options A, B, C, D on separate lines and distractor trap unmasked.
 
-Return ONLY this valid JSON without markdown formatting:
+Provide complete output in BOTH "en" (English) and "hi" (Academic Civil Services Hindi).
+
+Return ONLY valid JSON matching this schema:
 {
   "status": "APPROVED",
   "en": {
@@ -59,21 +64,21 @@ Return ONLY this valid JSON without markdown formatting:
     "state_psc_tags": ["UPPSC GS-5: Infrastructure", "BPSC GS-2: Industrial Growth"],
     "publish_date": "YYYY-MM-DD",
     "probable_hit_list_score": 9,
-    "simple_summary_points": ["Point 1: Trigger", "Point 2: Institutional debate", "Point 3: Macro impact"],
+    "simple_summary_points": ["Point 1: Trigger event", "Point 2: Institutional friction", "Point 3: Policy implication"],
     "value_additions": [
-      {"scope": "UPSC Core", "type": "Statute / Committee / Article", "content": "Exact article or committee citation"},
-      {"scope": "UPSC Core", "type": "Official Metric / Hard Data", "content": "Verified official statistic"},
-      {"scope": "State PSC Ready-to-Use", "type": "Regional Administrative Metric", "content": "Concrete state-level data point"}
+      {"scope": "UPSC Core", "type": "Statute / Committee / Article", "content": "Exact article or committee citation if mentioned"},
+      {"scope": "UPSC Core", "type": "Official Metric", "content": "Verified official statistic if mentioned"},
+      {"scope": "State PSC Ready", "type": "Regional Policy Application", "content": "Concrete state-level data point if mentioned"}
     ],
     "intro": "Strictly 25 to 30-word topper opening sentence",
     "ready_to_use_body": {
       "significance": [{"heading": "Constitutional Dimension", "explanation": "Exam point.", "real_example": "Precedent."}],
-      "challenges": [{"heading": "Critical Bottlenecks", "explanation": "Structural friction.", "real_example": "Evidence."}],
-      "way_forward": [{"heading": "Actionable Roadmap", "explanation": "Policy fix.", "real_example": "Committee note."}]
+      "challenges": [{"heading": "Structural Bottlenecks", "explanation": "Institutional friction.", "real_example": "Evidence."}],
+      "way_forward": [{"heading": "Actionable Roadmap", "explanation": "Policy restructuring.", "real_example": "Committee recommendation."}]
     },
     "conclusion": "Strictly 25-word balanced, futuristic conclusion",
     "state_value_add": "Direct actionable administrative application for State PSCs",
-    "pyq_reference": "UPSC Mains GS-X [Year] & UPPSC/BPSC Parallel Anchor",
+    "pyq_reference": "UPSC Mains GS-X [Year] Q[Num] & UPPSC/BPSC Parallel Anchor",
     "mcq_data": {
       "question": "Rigorous 3-statement Prelims trap MCQ",
       "options": {"A": "1 only", "B": "2 and 3 only", "C": "1 and 3 only", "D": "1, 2 and 3"},
@@ -84,7 +89,7 @@ Return ONLY this valid JSON without markdown formatting:
   "hi": {
     "source_newspaper": "The Hindu / Indian Express",
     "newspaper_page": "Page 10 (संपादकीय / एक्सप्लेंड)",
-    "original_headline": "मूल समाचार शीर्षक",
+    "original_headline": "समाचार पत्र का मूल शीर्षक",
     "topic": "अवधारणात्मक शीर्षक",
     "upsc_tags": ["GS-2: वैधानिक निकाय", "GS-3: अर्थव्यवस्था"],
     "state_psc_tags": ["UPPSC GS-5: अवसंरचना", "BPSC GS-2: औद्योगिक नीति"],
@@ -94,7 +99,7 @@ Return ONLY this valid JSON without markdown formatting:
     "value_additions": [
       {"scope": "UPSC Core", "type": "संवैधानिक अनुच्छेद / आयोग", "content": "सटीक संदर्भ"},
       {"scope": "UPSC Core", "type": "आधिकारिक सांख्यिकी", "content": "सत्यापित आंकड़ा"},
-      {"scope": "State PSC Ready-to-Use", "type": "राज्य प्रशासनिक पहल", "content": "राज्य डेटा"}
+      {"scope": "State PSC Ready", "type": "राज्य प्रशासनिक पहल", "content": "राज्य डेटा"}
     ],
     "intro": "25-30 शब्दों का टॉपर इंट्रो",
     "ready_to_use_body": {
@@ -122,7 +127,7 @@ def fetch_feed_items(url):
         return feedparser.parse(response.read())
 
 def run_crawler():
-    print("Initiating CivilPulse News Intelligence Engine...")
+    print("Initiating CivilPulse Zero-Hallucination Intelligence Engine...")
     TARGET_LIMIT = 5
     count = 0
 
