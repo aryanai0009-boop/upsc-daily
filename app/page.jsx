@@ -58,6 +58,18 @@ export default function CivilPulseFeed() {
     }
 
     async function syncUserProfile(user) {
+      // ⚡ Permanent Founder VIP Override
+      if (user.email === 'aryanai0009@gmail.com') {
+        setUserProfile({
+          isLoggedIn: true,
+          email: user.email,
+          planType: '360_RANKER', // Founder is ALWAYS Lifetime 360° Ranker
+          referralCode: 'FOUNDER',
+          referralCount: 999
+        })
+        return
+      }
+
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profile) {
         setUserProfile({
