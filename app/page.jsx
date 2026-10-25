@@ -31,7 +31,10 @@ export default function CivilPulseFeed() {
     referralCount: 0
   })
 
+  // Direct Password Auth States
   const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [isSignUpMode, setIsSignUpMode] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMessage, setAuthMessage] = useState('')
 
@@ -64,17 +67,24 @@ export default function CivilPulseFeed() {
           referralCode: profile.referral_code || '',
           referralCount: profile.referral_count || 0
         })
+      } else {
+        setUserProfile({
+          isLoggedIn: true,
+          email: user.email,
+          planType: 'FREE',
+          referralCode: '',
+          referralCount: 0
+        })
       }
     }
     initAuth()
   }, [])
 
-  // Fetch Feed & Populate Available Dates (Dual-Table & Dual-Schema Safe)
+  // Fetch Feed & Populate Available Dates
   useEffect(() => {
     async function fetchCards() {
       setLoading(true)
       
-      // Primary table fetch
       let { data, error } = await supabase
         .from('daily_cards')
         .select('*')
@@ -83,7 +93,6 @@ export default function CivilPulseFeed() {
         .order('created_at', { ascending: false })
         .limit(40)
 
-      // Fallback table fetch
       if (error || !data || data.length === 0) {
         const { data: fallbackData, error: fbError } = await supabase
           .from('daily_intel_cards')
@@ -131,19 +140,37 @@ export default function CivilPulseFeed() {
     fetchCards()
   }, [medium])
 
-  // Direct Passwordless 1-Click Email Magic Link
-  const handleMagicLogin = async (e) => {
+  // Direct Email + Password Handler (Zero Rate Limit)
+  const handlePasswordAuth = async (e) => {
     e.preventDefault()
-    if (!authEmail || !authEmail.includes('@')) {
-      setAuthMessage('Please enter a valid email address.')
-      return
+    setAuthMessage('Authenticating credentials...')
+
+    if (isSignUpMode) {
+      // New Student Registration
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+      })
+      if (error) {
+        setAuthMessage(`Registration Error: ${error.message}`)
+      } else {
+        setAuthMessage('Account created successfully! You are now logged in.')
+        setShowAuthModal(false)
+      }
+    } else {
+      // Existing Student / Founder Direct Login
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      })
+      if (error) {
+        setAuthMessage(`Login Failed: ${error.message}`)
+      } else {
+        setAuthMessage('Authentication successful!')
+        setShowAuthModal(false)
+        window.location.reload()
+      }
     }
-    setAuthMessage('Dispatching secure 1-click login link...')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: authEmail,
-      options: { emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '' }
-    })
-    setAuthMessage(error ? `Error: ${error.message}` : '⚡ 1-Click login link sent! Check your email inbox or spam.')
   }
 
   const handleLogout = async () => {
@@ -157,7 +184,6 @@ export default function CivilPulseFeed() {
     return idx >= 2
   }
 
-  // Filter Cards by Date and GS Category
   const dateFiltered = selectedDate === 'ALL' 
     ? cards 
     : cards.filter(c => c.publish_date === selectedDate)
@@ -186,7 +212,7 @@ export default function CivilPulseFeed() {
         ))}
       </div>
 
-      {/* Header (Pure Email Flow - No Google Auth) */}
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-[#070913]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -243,35 +269,70 @@ export default function CivilPulseFeed() {
                 onClick={() => setShowAuthModal(true)}
                 className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-white text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
               >
-                <span>✉️ Email Sign-In</span>
+                <span>🔑 Sign In</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Passwordless Email Auth Modal */}
+      {/* Direct Password Auth Modal (Zero Rate Limit) */}
       {showAuthModal && !userProfile.isLoggedIn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#0A0D1B] border border-amber-500/30 p-6 rounded-2xl max-w-sm w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-white">Student Sign-In</h3>
+              <h3 className="text-base font-bold text-white">
+                {isSignUpMode ? 'Student Registration' : 'Student & Founder Login'}
+              </h3>
               <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-white text-sm">✕</button>
             </div>
-            <p className="text-xs text-slate-400">Enter your email address to receive an instant, passwordless 1-click login link.</p>
-            <form onSubmit={handleMagicLogin} className="space-y-3">
-              <input
-                type="email"
-                required
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="aspirant@gmail.com"
-                className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-mono"
-              />
+            <p className="text-xs text-slate-400">
+              {isSignUpMode 
+                ? 'Create your password to access CivilPulse intel.' 
+                : 'Enter your credentials for instant password access.'}
+            </p>
+
+            <form onSubmit={handlePasswordAuth} className="space-y-3">
+              <div>
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="aspirant@gmail.com"
+                  className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-mono"
+                />
+              </div>
+              <div>
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-mono"
+                />
+              </div>
               <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2.5 rounded-xl transition-all">
-                Send 1-Click Magic Link
+                {isSignUpMode ? 'Register New Account' : 'Sign In Instantly'}
               </button>
             </form>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUpMode(!isSignUpMode)
+                  setAuthMessage('')
+                }}
+                className="text-xs text-amber-400 hover:underline font-mono"
+              >
+                {isSignUpMode 
+                  ? 'Already have an account? Sign In' 
+                  : "Don't have an account? Register Now"}
+              </button>
+            </div>
+
             {authMessage && (
               <p className="text-[11px] text-amber-300 font-mono bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
                 {authMessage}
@@ -281,12 +342,10 @@ export default function CivilPulseFeed() {
         </div>
       )}
 
-      {/* TRACKER-PRO STYLE DATE ARCHIVE SELECTOR */}
+      {/* Date Ribbon */}
       <div className="bg-[#0B0E1E] border-b border-slate-800 px-4 py-2.5">
         <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
-          <span className="text-slate-400 font-mono text-[11px] uppercase mr-1 flex items-center gap-1">
-            📅 Date:
-          </span>
+          <span className="text-slate-400 font-mono text-[11px] uppercase mr-1">📅 Date:</span>
           <button
             onClick={() => setSelectedDate('ALL')}
             className={`px-3 py-1 rounded-lg font-mono font-bold transition-all ${
@@ -315,7 +374,7 @@ export default function CivilPulseFeed() {
 
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-8">
         
-        {/* Dynamic Paper Tabs */}
+        {/* GS Category Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {['ALL', 'GS-1', 'GS-2', 'GS-3', 'GS-4'].map(paper => (
             <button
@@ -337,17 +396,17 @@ export default function CivilPulseFeed() {
           ))}
         </div>
 
-        {/* FEED SECTION */}
+        {/* Feed Cards */}
         <section className="space-y-6">
           {loading ? (
             <div className="py-24 text-center space-y-3">
               <div className="w-8 h-8 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin mx-auto"></div>
-              <p className="text-xs text-slate-400 font-mono">Loading verified examination cards...</p>
+              <p className="text-xs text-slate-400 font-mono">Calibrating live examination intel...</p>
             </div>
           ) : finalCards.length === 0 ? (
             <div className="py-20 text-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/30 p-8 space-y-2">
-              <p className="text-base font-bold text-slate-200">No cards found for the selected date or paper.</p>
-              <p className="text-xs text-slate-400">Select "All Dates" to browse the full archive.</p>
+              <p className="text-base font-bold text-slate-200">No cards found for this filter.</p>
+              <p className="text-xs text-slate-400">Click "All Dates" above to browse the active archive.</p>
             </div>
           ) : finalCards.map((card, idx) => {
             const paywalled = isCardPaywalled(idx)
@@ -366,7 +425,6 @@ export default function CivilPulseFeed() {
                 key={card.id || idx}
                 className="bg-[#0A0D1A] border border-slate-800/90 rounded-2xl p-6 shadow-xl relative overflow-hidden space-y-5"
               >
-                {/* 1 & 2. Sourcing, Page, Date & Original Headline */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-white bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
@@ -387,7 +445,6 @@ export default function CivilPulseFeed() {
                   </p>
                 )}
 
-                {/* 3. Syllabus Linkage */}
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
                     <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-md">
@@ -402,7 +459,6 @@ export default function CivilPulseFeed() {
                   </h2>
                 </div>
 
-                {/* Paywall on Card 3 Onwards for Free Users */}
                 {paywalled ? (
                   <div className="relative pt-3">
                     <div className="filter blur-md select-none pointer-events-none opacity-20 space-y-4">
@@ -429,7 +485,7 @@ export default function CivilPulseFeed() {
                   </div>
                 ) : (
                   <>
-                    {/* 4. 3 Points in Simple Summary */}
+                    {/* 3 Points Summary */}
                     <div className="bg-[#070913] rounded-xl p-4 border border-slate-800/80 space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
                         ⚡ 3 POINTS IN SIMPLE SUMMARY (WHAT IS IN NEWS)
@@ -448,24 +504,7 @@ export default function CivilPulseFeed() {
                       )}
                     </div>
 
-                    {/* 5. Facts / Value Additions */}
-                    {card.value_additions && card.value_additions.length > 0 && (
-                      <div className="bg-slate-900/50 rounded-xl p-3.5 border border-slate-800/80 space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
-                          📊 VERIFIED FACTS & VALUE ADDITION (NEWS EXTRACTED ONLY)
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                          {card.value_additions.map((va, i) => (
-                            <div key={i} className="bg-[#070914] p-2.5 rounded-lg border border-slate-800">
-                              <span className="text-[9px] font-mono text-slate-400 uppercase block">{va.type}</span>
-                              <p className="text-slate-200 text-[11px] mt-0.5">{va.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 6. Ready-Made Introduction */}
+                    {/* Ready-Made Introduction */}
                     {card.intro && (
                       <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 text-xs">
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 block mb-1">
@@ -477,13 +516,12 @@ export default function CivilPulseFeed() {
                       </div>
                     )}
 
-                    {/* 7. Ready-to-Use Body (LOCKED HEADER: MAINS DIMENSIONS & PERSPECTIVES) */}
+                    {/* MAINS DIMENSIONS & PERSPECTIVES */}
                     <div className="bg-[#080B17] border border-slate-800/90 rounded-xl p-4 space-y-4 text-xs">
                       <span className="text-[10px] font-black uppercase tracking-widest text-amber-400/90 block">
                         🏛️ MAINS DIMENSIONS & PERSPECTIVES
                       </span>
 
-                      {/* Fallback if body came as direct array */}
                       {rawBody.length > 0 && (
                         <div className="space-y-2 pl-2 border-l border-amber-500/30">
                           {rawBody.map((item, i) => (
@@ -494,7 +532,6 @@ export default function CivilPulseFeed() {
                         </div>
                       )}
 
-                      {/* Significance */}
                       {sig.length > 0 && (
                         <div className="space-y-2">
                           <strong className="text-amber-400 text-xs block">1. Significance (Mentioned in News):</strong>
@@ -514,7 +551,6 @@ export default function CivilPulseFeed() {
                         </div>
                       )}
 
-                      {/* Challenges */}
                       {ch.length > 0 && (
                         <div className="space-y-2">
                           <strong className="text-rose-400 text-xs block">2. Challenges & Bottlenecks:</strong>
@@ -534,7 +570,6 @@ export default function CivilPulseFeed() {
                         </div>
                       )}
 
-                      {/* Way Forward */}
                       {wf.length > 0 && (
                         <div className="space-y-2">
                           <strong className="text-emerald-400 text-xs block">3. Way Forward (Actionable Insights):</strong>
@@ -553,13 +588,9 @@ export default function CivilPulseFeed() {
                           </div>
                         </div>
                       )}
-
-                      {rawBody.length === 0 && sig.length === 0 && ch.length === 0 && wf.length === 0 && (
-                        <p className="text-slate-400 text-[11px] italic">Strategic examination dimensions linked in PYQ matrix below.</p>
-                      )}
                     </div>
 
-                    {/* 8. Match PYQ with that News */}
+                    {/* PYQ Match */}
                     {card.pyq_reference && (
                       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs">
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 block mb-1">
@@ -571,7 +602,7 @@ export default function CivilPulseFeed() {
                       </div>
                     )}
 
-                    {/* 9. Short Conclusion */}
+                    {/* Short Conclusion */}
                     {card.conclusion && (
                       <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-3 text-[11px]">
                         <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
@@ -583,7 +614,7 @@ export default function CivilPulseFeed() {
                       </div>
                     )}
 
-                    {/* 10. One Prelims MCQ */}
+                    {/* Prelims Trap MCQ */}
                     {hasMCQ && (
                       <div className="border-t border-slate-800/80 pt-3">
                         <button
@@ -648,28 +679,23 @@ export default function CivilPulseFeed() {
             )
           })}
         </section>
-
       </main>
 
-      {/* Compliance Footer Shield */}
+      {/* Statutory Footer */}
       <footer className="mt-20 border-t border-slate-800/80 bg-[#04060C] py-10 px-4 text-slate-500 text-[11px] leading-relaxed">
         <div className="max-w-5xl mx-auto space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
-            <span className="font-bold text-slate-300 text-xs">CivilPulse Legal, Statutory & Compliance Framework</span>
-            <span className="font-mono text-[10px]">Section 52 Indian Copyright Act, 1957 Compliant • 18% GST Inclusive</span>
+            <span className="font-bold text-slate-300 text-xs">CivilPulse Legal & Compliance Framework</span>
+            <span className="font-mono text-[10px]">Section 52 Indian Copyright Act, 1957 Compliant</span>
           </div>
           <p>
-            <strong>Fair Dealing & Pedagogical Citation Notice:</strong> CivilPulse publishes independent pedagogical evaluation frameworks, administrative syntheses, and syllabus mappings under Section 52(1)(a) of the Indian Copyright Act, 1957. References to newspapers (such as <em>The Hindu</em> or <em>The Indian Express</em>) are strictly for academic source attribution and research reference.
+            <strong>Fair Dealing & Pedagogical Citation Notice:</strong> CivilPulse publishes independent pedagogical evaluation frameworks and administrative syntheses under Section 52(1)(a) of the Indian Copyright Act, 1957.
           </p>
           <p>
-            <strong>Statutory Non-Affiliation Disclaimer:</strong> CivilPulse is an independent educational platform and is not affiliated, endorsed, or connected with the Union Public Service Commission (UPSC), any State Public Service Commission (UPPSC, BPSC, RPSC, MPPSC), or any publishing houses.
-          </p>
-          <p>
-            <strong>Digital Access & Non-Refund Policy:</strong> CivilPulse provides immediate free access to daily sample cards to verify platform utility. Upon purchase of the Daily Intel Pass or 360° Ranker Pass, full unhindered access to proprietary databases and vaults is activated instantly. Consequently, all digital subscription transactions are final, non-cancellable, and strictly non-refundable.
+            <strong>Digital Access & Non-Refund Policy:</strong> Upon purchase of Daily Intel Pass or 360° Ranker Pass, digital access is provisioned immediately. All subscription transactions are final and strictly non-refundable.
           </p>
         </div>
       </footer>
-
     </div>
   )
 }
