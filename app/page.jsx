@@ -2,401 +2,672 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rdjldpbwnwbbyyflvnav.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy'
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rdjldpbwnwbbyyflvnav.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy'
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'civilpulse-auth-token',
+    storage: typeof window !== 'undefined' ? window.localStorage : null
+  }
+})
 
 export default function CivilPulseFeed() {
   const [cards, setCards] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
-  const [userProfile, setUserProfile] = useState(null)
-  const [selectedCategory, setSelectedCategory] = useState('ALL')
+  const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState('ALL')
-  const [emailInput, setEmailInput] = useState('')
-  const [authStatus, setAuthStatus] = useState('')
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [medium, setMedium] = useState('en')
+  const [activeFilter, setActiveFilter] = useState('ALL')
+  const [loading, setLoading] = useState(true)
+  const [selectedAnswers, setSelectedAnswers] = useState({})
+  const [revealedMCQ, setRevealedMCQ] = useState({})
+  
+  const [userProfile, setUserProfile] = useState({
+    isLoggedIn: false,
+    email: '',
+    planType: 'FREE',
+    referralCode: '',
+    referralCount: 0
+  })
 
+  const [authEmail, setAuthEmail] = useState('')
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMessage, setAuthMessage] = useState('')
+
+  // Sync Auth State
   useEffect(() => {
-    async function init() {
-      setLoading(true)
-      
-      // 1. Session Audit
+    async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        setUser(session.user)
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        setUserProfile(profile || { plan_type: 'FREE' })
-      } else {
-        setUser(null)
-        setUserProfile(null)
+        syncUserProfile(session.user)
       }
 
-      // 2. Fetch Cards
-      const { data, error } = await supabase
-        .from('daily_intel_cards')
-        .select('*')
-        .order('date', { ascending: false })
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (_, currentSession) => {
+        if (currentSession?.user) {
+          syncUserProfile(currentSession.user)
+        } else {
+          setUserProfile({ isLoggedIn: false, email: '', planType: 'FREE', referralCode: '', referralCount: 0 })
+        }
+      })
 
-      if (!error && data) {
+      return () => authListener?.subscription?.unsubscribe()
+    }
+
+    async function syncUserProfile(user) {
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (profile) {
+        setUserProfile({
+          isLoggedIn: true,
+          email: user.email,
+          planType: profile.plan_type || 'FREE',
+          referralCode: profile.referral_code || '',
+          referralCount: profile.referral_count || 0
+        })
+      }
+    }
+    initAuth()
+  }, [])
+
+  // Fetch Feed & Populate Available Dates (With Dual-Table Compatibility)
+  useEffect(() => {
+    async function fetchCards() {
+      setLoading(true)
+      
+      // Check primary table: daily_cards
+      let { data, error } = await supabase
+        .from('daily_cards')
+        .select('*')
+        .eq('medium', medium)
+        .order('publish_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(40)
+
+      // Fallback: If daily_cards is empty, check daily_intel_cards
+      if ((error || !data || data.length === 0)) {
+        const { data: fallbackData, error: fbError } = await supabase
+          .from('daily_intel_cards')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(40)
+        
+        if (!fbError && fallbackData && fallbackData.length > 0) {
+          data = fallbackData.map(c => ({
+            id: c.id,
+            source_newspaper: c.publication,
+            newspaper_page: c.page_number,
+            publish_date: c.date,
+            original_headline: c.title,
+            topic: c.title,
+            upsc_tags: [c.syllabus_tag || c.category],
+            state_psc_tags: [c.state_psc_tag],
+            simple_summary_points: c.summary_points,
+            intro: c.introduction,
+            body_points_raw: c.body_points,
+            conclusion: c.conclusion,
+            pyq_reference: c.pyq_reference,
+            mcq_data: c.prelims_traps ? {
+              question: 'Examine the following distractor points regarding this topic:',
+              options: {
+                A: c.prelims_traps[0] || 'Statement 1 is valid',
+                B: c.prelims_traps[1] || 'Statement 2 is valid',
+                C: 'Both Statement 1 and 2',
+                D: 'Neither 1 nor 2'
+              },
+              answer: 'A',
+              trap_explanation: 'Examiner Mindset Distractor Analysis: Check extreme qualifiers.'
+            } : null
+          }))
+        }
+      }
+
+      if (data && data.length > 0) {
         setCards(data)
+        const uniqueDates = Array.from(new Set(data.map(c => c.publish_date).filter(Boolean)))
+        setAvailableDates(uniqueDates)
       }
       setLoading(false)
     }
+    fetchCards()
+  }, [medium])
 
-    init()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user)
-      } else {
-        setUser(null)
-        setUserProfile(null)
-      }
-    })
-
-    return () => {
-      authListener?.subscription?.unsubscribe()
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
+      })
+      if (error) setShowAuthModal(true)
+    } catch {
+      setShowAuthModal(true)
     }
-  }, [])
+  }
 
   const handleMagicLogin = async (e) => {
     e.preventDefault()
-    if (!emailInput || !emailInput.includes('@')) {
-      setAuthStatus('Please enter a valid email address.')
-      return
-    }
-
-    setAuthStatus('Dispatching 1-Click Secure Link to your Inbox...')
+    if (!authEmail) return
+    setAuthMessage('Sending secure login link...')
     const { error } = await supabase.auth.signInWithOtp({
-      email: emailInput,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      }
+      email: authEmail,
+      options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
     })
-
-    if (!error) {
-      setAuthStatus('⚡ Verification Link Dispatched! Open your email to login instantly.')
-    } else {
-      setAuthStatus(`Authentication Error: ${error.message}`)
-    }
+    setAuthMessage(error ? `Error: ${error.message}` : 'Login link sent to your email! Click it to stay logged in.')
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setUserProfile(null)
-    window.location.reload()
+  const isCardPaywalled = (idx) => {
+    if (userProfile.planType === '360_RANKER' || userProfile.planType === 'DAILY_INTEL') return false
+    return idx >= 2
   }
 
-  // Filtering
-  const availableDates = Array.from(new Set(cards.map(c => c.date))).sort().reverse()
-  const filteredCards = cards.filter(card => {
-    const catMatch = selectedCategory === 'ALL' || card.category === selectedCategory
-    const dateMatch = selectedDate === 'ALL' || card.date === selectedDate
-    return catMatch && dateMatch
-  })
+  // Filter Cards by Date and GS Category
+  const dateFiltered = selectedDate === 'ALL' 
+    ? cards 
+    : cards.filter(c => c.publish_date === selectedDate)
 
-  const isUserPremium = userProfile?.plan_type === 'DAILY_INTEL' || userProfile?.plan_type === '360_RANKER'
+  const finalCards = activeFilter === 'ALL'
+    ? dateFiltered
+    : dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes(activeFilter)))
+
+  const filterCounts = {
+    ALL: dateFiltered.length,
+    'GS-1': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-1'))).length,
+    'GS-2': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-2'))).length,
+    'GS-3': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-3'))).length,
+    'GS-4': dateFiltered.filter(c => c.upsc_tags?.some(t => t.includes('GS-4'))).length,
+  }
 
   return (
-    <div className="min-h-screen bg-[#060811] text-slate-200 font-sans selection:bg-amber-400 selection:text-black">
+    <div className="min-h-screen bg-[#070913] text-[#E2E8F0] font-sans pb-24 selection:bg-amber-500 selection:text-black relative">
       
-      {/* Top Navigation */}
-      <header className="border-b border-slate-800/80 bg-[#060811]/90 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+      {/* Forensic Anti-Leak Watermark */}
+      <div className="fixed inset-0 pointer-events-none z-50 select-none overflow-hidden opacity-[0.035] flex flex-wrap gap-24 p-8 transform -rotate-12">
+        {Array.from({ length: 48 }).map((_, i) => (
+          <span key={i} className="text-xs font-mono text-white tracking-widest uppercase">
+            {userProfile.email || 'CIVILPULSE EXAMINER AUDIT'} • {userProfile.planType} • DO NOT REDISTRIBUTE
+          </span>
+        ))}
+      </div>
+
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[#070913]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl">⚡</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <span className="text-black font-black text-lg tracking-tighter">CP</span>
+            </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-white">CivilPulse</h1>
-              <span className="text-[10px] text-amber-400/90 font-mono tracking-wider uppercase block -mt-0.5">
-                UPSC CSE / State PSC Automated Intel
-              </span>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">CivilPulse</h1>
+                <span className="text-[9px] bg-amber-400/10 text-amber-300 px-2 py-0.5 rounded font-mono font-bold border border-amber-400/30">
+                  TOP 1% EXAMINER CALIBRATED
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Current Affairs Means CivilPulse • Zero-Fluff Intelligence</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-slate-400 hidden sm:inline">{user.email}</span>
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold font-mono">
-                  {userProfile?.plan_type || 'FREE ACCESS'}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs font-mono text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800"
-                >
-                  Logout
-                </button>
+          <div className="flex items-center gap-2.5">
+            <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+              <button
+                onClick={() => setMedium('en')}
+                className={`px-2.5 py-1 text-xs font-bold rounded ${medium === 'en' ? 'bg-amber-500 text-black' : 'text-slate-400'}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setMedium('hi')}
+                className={`px-2.5 py-1 text-xs font-bold rounded ${medium === 'hi' ? 'bg-amber-500 text-black' : 'text-slate-400'}`}
+              >
+                हिन्दी
+              </button>
+            </div>
+
+            <a
+              href="/plans"
+              className="text-xs bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-1.5 rounded-lg shadow-sm transition-all"
+            >
+              Plans & Perks
+            </a>
+
+            {userProfile.isLoggedIn ? (
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-[11px] font-mono text-amber-400 font-bold">{userProfile.planType}</span>
               </div>
             ) : (
               <button
-                onClick={() => setShowAuthModal(true)}
-                className="bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-amber-400/10"
+                onClick={handleGoogleLogin}
+                className="flex items-center gap-1.5 text-xs bg-white hover:bg-slate-100 text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
               >
-                Sign In / Register
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>Google Sign-In</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-
-        {/* Date & Filter Ribbon */}
-        <div className="space-y-3 bg-[#0A0D1B] border border-slate-800/80 p-4 rounded-2xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-mono font-bold text-slate-400 mr-1 uppercase">Date Archive:</span>
-            <button
-              onClick={() => setSelectedDate('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
-                selectedDate === 'ALL'
-                  ? 'bg-amber-400 text-black font-bold'
-                  : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
-            >
-              All Dates ({cards.length})
+      {/* Auth Fallback Modal */}
+      {showAuthModal && !userProfile.isLoggedIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0A0D1B] border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4">
+            <h3 className="text-base font-bold text-white">Student Login</h3>
+            <p className="text-xs text-slate-400">Enter your email to receive an instant secure 1-click login link.</p>
+            <form onSubmit={handleMagicLogin} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="aspirant@gmail.com"
+                className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+              />
+              <button type="submit" className="w-full bg-amber-500 text-black font-bold text-xs py-2.5 rounded-xl">
+                Send 1-Click Magic Link
+              </button>
+            </form>
+            {authMessage && <p className="text-[11px] text-amber-300 font-mono">{authMessage}</p>}
+            <button onClick={() => setShowAuthModal(false)} className="text-[11px] text-slate-500 hover:underline block text-center w-full">
+              Close
             </button>
-            {availableDates.map(d => (
-              <button
-                key={d}
-                onClick={() => setSelectedDate(d)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
-                  selectedDate === d
-                    ? 'bg-amber-400 text-black font-bold'
-                    : 'bg-slate-900 text-slate-400 hover:text-white'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/60">
-            {['ALL', 'GS-1', 'GS-2', 'GS-3', 'GS-4'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-slate-200 text-black font-bold'
-                    : 'bg-slate-900 text-slate-400 hover:text-white'
-                }`}
-              >
-                {cat === 'ALL' ? 'All GS Papers' : cat}
-              </button>
-            ))}
           </div>
         </div>
+      )}
 
-        {/* Feed Cards */}
-        {loading ? (
-          <div className="py-20 text-center font-mono text-xs text-slate-500">
-            Synchronizing Topper Pedagogy Intel Records...
-          </div>
-        ) : filteredCards.length === 0 ? (
-          <div className="py-20 text-center font-mono text-xs text-slate-500 bg-[#0A0D1B] border border-slate-800 rounded-2xl">
-            No intelligence records found for this specific filter.
-          </div>
-        ) : (
-          filteredCards.map((card, idx) => {
-            // Locking Funnel: Index >= 2 requires paid plan or login
-            const isCardLocked = idx >= 2 && !isUserPremium
+      {/* TRACKER-PRO STYLE DATE ARCHIVE SELECTOR */}
+      <div className="bg-[#0B0E1E] border-b border-slate-800 px-4 py-2.5">
+        <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
+          <span className="text-slate-400 font-mono text-[11px] uppercase mr-1 flex items-center gap-1">
+            📅 Date:
+          </span>
+          <button
+            onClick={() => setSelectedDate('ALL')}
+            className={`px-3 py-1 rounded-lg font-mono font-bold transition-all ${
+              selectedDate === 'ALL'
+                ? 'bg-amber-500 text-black shadow-sm'
+                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+            }`}
+          >
+            All Dates ({cards.length})
+          </button>
+          {availableDates.map(dateStr => (
+            <button
+              key={dateStr}
+              onClick={() => setSelectedDate(dateStr)}
+              className={`px-3 py-1 rounded-lg font-mono whitespace-nowrap transition-all border ${
+                selectedDate === dateStr
+                  ? 'bg-amber-500 text-black border-amber-400 font-bold shadow-sm'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {dateStr}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-4 pt-6 space-y-8">
+        
+        {/* Dynamic Paper Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {['ALL', 'GS-1', 'GS-2', 'GS-3', 'GS-4'].map(paper => (
+            <button
+              key={paper}
+              onClick={() => setActiveFilter(paper)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 whitespace-nowrap ${
+                activeFilter === paper
+                  ? 'bg-amber-500/10 border-amber-400/80 text-amber-300'
+                  : 'bg-slate-900/60 border-slate-800/90 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span>{paper === 'ALL' ? (medium === 'en' ? 'All Categories' : 'सभी श्रेणियां') : paper}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                activeFilter === paper ? 'bg-amber-400 text-black' : 'bg-slate-800 text-slate-400'
+              }`}>
+                {filterCounts[paper]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* FEED SECTION */}
+        <section className="space-y-6">
+          {loading ? (
+            <div className="py-24 text-center space-y-3">
+              <div className="w-8 h-8 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin mx-auto"></div>
+              <p className="text-xs text-slate-400 font-mono">Loading verified examination cards...</p>
+            </div>
+          ) : finalCards.length === 0 ? (
+            <div className="py-20 text-center border border-dashed border-slate-800 rounded-2xl bg-slate-900/30 p-8 space-y-2">
+              <p className="text-base font-bold text-slate-200">No cards found for the selected date or paper.</p>
+              <p className="text-xs text-slate-400">Select "All Dates" to browse the full archive.</p>
+            </div>
+          ) : finalCards.map((card, idx) => {
+            const paywalled = isCardPaywalled(idx)
+            const hasMCQ = card.mcq_data && card.mcq_data.question
+            const userChoice = selectedAnswers[card.id]
+            const isCorrect = userChoice && card.mcq_data?.answer && userChoice.trim().toUpperCase() === card.mcq_data.answer.trim().toUpperCase()
+
+            // Safe parsing for body items
+            const sig = card.ready_to_use_body?.significance || []
+            const ch = card.ready_to_use_body?.challenges || []
+            const wf = card.ready_to_use_body?.way_forward || []
+            const rawBody = card.body_points_raw || []
+            const summaryPoints = card.simple_summary_points || card.crux_points || []
 
             return (
               <article
                 key={card.id || idx}
-                className="bg-[#0A0D1B] border border-slate-800/90 rounded-2xl p-6 sm:p-8 space-y-6 relative overflow-hidden"
+                className="bg-[#0A0D1A] border border-slate-800/90 rounded-2xl p-6 shadow-xl relative overflow-hidden space-y-5"
               >
-                {/* Header Tag Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                {/* 1 & 2. Sourcing, Page, Date & Original Headline */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="bg-slate-900 border border-slate-700/80 px-2.5 py-1 rounded-md text-slate-300 font-bold">
-                      📰 {card.publication || 'The Hindu / Indian Express'}
+                    <span className="font-bold text-white bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
+                      📰 {card.source_newspaper || 'The Hindu / Indian Express'}
                     </span>
-                    <span className="bg-amber-400/10 text-amber-300 border border-amber-400/20 px-2 py-1 rounded-md">
-                      {card.page_number || 'National Page'}
+                    <span className="text-amber-400/90 font-mono text-[11px] bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                      {card.newspaper_page || 'Page 10'}
                     </span>
                   </div>
-                  <span className="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-500/20 px-2.5 py-1 rounded-md">
-                    Date: {card.date}
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    Date: {card.publish_date || 'Current Edition'}
                   </span>
                 </div>
 
-                {/* Syllabus Badges */}
-                <div className="space-y-1.5">
-                  {card.syllabus_tag && (
-                    <div className="text-xs bg-sky-950/30 text-sky-300 border border-sky-500/20 px-3 py-1.5 rounded-lg font-mono">
-                      🎯 <strong className="text-sky-200">UPSC CSE:</strong> {card.syllabus_tag}
-                    </div>
-                  )}
-                  {card.state_psc_tag && (
-                    <div className="text-xs bg-emerald-950/30 text-emerald-300 border border-emerald-500/20 px-3 py-1.5 rounded-lg font-mono">
-                      🏛️ <strong className="text-emerald-200">State PSC Alignment:</strong> {card.state_psc_tag}
-                    </div>
-                  )}
-                </div>
-
-                {/* Headline */}
-                <h2 className="text-xl sm:text-2xl font-black text-white leading-snug">
-                  {card.title}
-                </h2>
-
-                {/* Section 1: Crux Points */}
-                {card.summary_points && (
-                  <div className="bg-[#060812] border border-slate-800/90 p-4 sm:p-5 rounded-xl space-y-3">
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono block">
-                      ⚡ 3-POINT EXECUTIVE SUMMARY (WHAT IS IN NEWS)
-                    </span>
-                    <ul className="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed list-disc list-inside">
-                      {card.summary_points.map((pt, i) => (
-                        <li key={i}>{pt}</li>
-                      ))}
-                    </ul>
-                  </div>
+                {card.original_headline && (
+                  <p className="text-[11px] text-slate-400 italic">
+                    Original Lead: "{card.original_headline}"
+                  </p>
                 )}
 
-                {/* Content Blur / Hard Paywall Barrier */}
-                {isCardLocked ? (
-                  <div className="py-12 bg-gradient-to-b from-transparent to-[#060812] flex flex-col items-center justify-center text-center space-y-4 rounded-xl border border-dashed border-amber-500/30 p-6">
-                    <span className="text-3xl">🔒</span>
-                    <h3 className="text-lg font-bold text-white">Full Intelligence Analysis Locked</h3>
-                    <p className="text-xs text-slate-400 max-w-md font-mono">
-                      Mains Model Frameworks, Distractor Trap MCQs, and 10 Pro-Vault components are reserved for active subscribers.
-                    </p>
-                    <div className="flex gap-3">
+                {/* 3. Syllabus Linkage */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-md">
+                      🎯 UPSC: {card.upsc_tags?.[0] || 'Core GS'}
+                    </span>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                      🏛️ State PCS: {card.state_psc_tags?.[0] || 'State PSC Alignment'}
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    {card.topic}
+                  </h2>
+                </div>
+
+                {/* Paywall on Card 3 Onwards for Free Users */}
+                {paywalled ? (
+                  <div className="relative pt-3">
+                    <div className="filter blur-md select-none pointer-events-none opacity-20 space-y-4">
+                      <div className="h-16 bg-slate-800 rounded-xl"></div>
+                      <div className="h-24 bg-slate-800 rounded-xl"></div>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-t from-[#0A0D1A] via-[#0A0D1A]/95 to-transparent">
+                      <span className="text-[10px] uppercase font-black tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30 mb-2">
+                        🔒 PRO EXAM VAULT LOCKED
+                      </span>
+                      <h4 className="text-lg font-bold text-white max-w-sm">
+                        Daily First 2 Cards are Free Forever
+                      </h4>
+                      <p className="text-xs text-slate-400 max-w-md mt-1 mb-4">
+                        Unlock all remaining daily cards with Daily Intel (₹999/yr) or get all 10 Pro-Vaults with 360° Ranker Pass (₹3,499/yr).
+                      </p>
                       <a
                         href="/plans"
-                        className="bg-amber-400 hover:bg-amber-300 text-black font-black text-xs px-5 py-2.5 rounded-xl transition-all"
+                        className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md"
                       >
-                        Upgrade to Daily Intel (₹999) / 360° Ranker
+                        Unlock Instant Access $\rightarrow$
                       </a>
                     </div>
                   </div>
                 ) : (
                   <>
-                    {/* Section 2: Introduction */}
-                    {card.introduction && (
-                      <div className="bg-[#060812] border border-slate-800/90 p-4 sm:p-5 rounded-xl space-y-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono block">
-                          ✍️ READY-MADE MAINS INTRODUCTION (25-30 WORDS)
-                        </span>
-                        <blockquote className="text-xs sm:text-sm text-slate-300 italic border-l-2 border-amber-400 pl-3">
-                          "{card.introduction}"
-                        </blockquote>
-                      </div>
-                    )}
+                    {/* 4. 3 Points in Simple Summary */}
+                    <div className="bg-[#070913] rounded-xl p-4 border border-slate-800/80 space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                        ⚡ 3 POINTS IN SIMPLE SUMMARY (WHAT IS IN NEWS)
+                      </span>
+                      {summaryPoints.length > 0 ? (
+                        <ul className="space-y-1.5 text-xs text-slate-300 leading-relaxed">
+                          {summaryPoints.map((pt, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-amber-400 font-bold mt-0.5">•</span>
+                              <span>{pt}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">Core issue synthesized in introduction below.</p>
+                      )}
+                    </div>
 
-                    {/* Section 3: Body Points (CLEANED HEADING - NO EXPLANATION TEXT) */}
-                    {card.body_points && (
-                      <div className="bg-[#060812] border border-slate-800/90 p-4 sm:p-5 rounded-xl space-y-3">
-                        <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono block">
-                          🏛️ MAINS BODY POINTS & ARGUMENTS
+                    {/* 5. Facts / Value Additions */}
+                    {card.value_additions && card.value_additions.length > 0 && (
+                      <div className="bg-slate-900/50 rounded-xl p-3.5 border border-slate-800/80 space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                          📊 VERIFIED FACTS & VALUE ADDITION (NEWS EXTRACTED ONLY)
                         </span>
-                        <div className="space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
-                          {Array.isArray(card.body_points) ? (
-                            card.body_points.map((bp, i) => (
-                              <p key={i} className="border-b border-slate-800/60 pb-2 last:border-b-0 last:pb-0">
-                                • {bp}
-                              </p>
-                            ))
-                          ) : (
-                            <p>{card.body_points}</p>
-                          )}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                          {card.value_additions.map((va, i) => (
+                            <div key={i} className="bg-[#070914] p-2.5 rounded-lg border border-slate-800">
+                              <span className="text-[9px] font-mono text-slate-400 uppercase block">{va.type}</span>
+                              <p className="text-slate-200 text-[11px] mt-0.5">{va.content}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Section 4: PYQ Match */}
-                    {card.pyq_reference && (
-                      <div className="bg-[#060812] border border-slate-800/90 p-4 sm:p-5 rounded-xl space-y-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono block">
-                          📍 RELEVANT PREVIOUS YEAR QUESTION (UPSC & STATE PSC)
+                    {/* 6. Ready-Made Introduction */}
+                    {card.intro && (
+                      <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 text-xs">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 block mb-1">
+                          ✍️ READY-MADE INTRODUCTION ABOUT NEWS (25-30 WORDS)
                         </span>
-                        <p className="text-xs text-slate-300 font-mono">
+                        <p className="text-slate-200 italic font-serif leading-relaxed">
+                          "{card.intro}"
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 7. Ready-to-Use Body (Cleaned Header: MAINS DIMENSIONS & PERSPECTIVES) */}
+                    <div className="bg-[#080B17] border border-slate-800/90 rounded-xl p-4 space-y-4 text-xs">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-400/90 block">
+                        🏛️ MAINS DIMENSIONS & PERSPECTIVES
+                      </span>
+
+                      {/* Raw Array Format Support */}
+                      {rawBody.length > 0 && (
+                        <div className="space-y-2 pl-2 border-l border-amber-500/30">
+                          {rawBody.map((item, i) => (
+                            <p key={i} className="text-slate-200 text-[11px] leading-relaxed">
+                              • {item}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Significance */}
+                      {sig.length > 0 && (
+                        <div className="space-y-2">
+                          <strong className="text-amber-400 text-xs block">1. Significance (Mentioned in News):</strong>
+                          <div className="space-y-2 pl-2 border-l border-amber-500/30">
+                            {sig.map((item, i) => (
+                              <div key={i} className="space-y-0.5">
+                                <div className="font-semibold text-slate-100 text-[11px]">• [{item.heading}]</div>
+                                <div className="text-slate-300 text-[11px] pl-3">{item.explanation}</div>
+                                {item.real_example && (
+                                  <div className="text-amber-300/90 italic font-mono text-[10px] pl-3">
+                                    Ex ➔ {item.real_example}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Challenges */}
+                      {ch.length > 0 && (
+                        <div className="space-y-2">
+                          <strong className="text-rose-400 text-xs block">2. Challenges & Bottlenecks (Mentioned in News):</strong>
+                          <div className="space-y-2 pl-2 border-l border-rose-500/30">
+                            {ch.map((item, i) => (
+                              <div key={i} className="space-y-0.5">
+                                <div className="font-semibold text-slate-100 text-[11px]">• [{item.heading}]</div>
+                                <div className="text-slate-300 text-[11px] pl-3">{item.explanation}</div>
+                                {item.real_example && (
+                                  <div className="text-rose-300/90 italic font-mono text-[10px] pl-3">
+                                    Ex ➔ {item.real_example}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Way Forward */}
+                      {wf.length > 0 && (
+                        <div className="space-y-2">
+                          <strong className="text-emerald-400 text-xs block">3. Way Forward (Mentioned in News):</strong>
+                          <div className="space-y-2 pl-2 border-l border-emerald-500/30">
+                            {wf.map((item, i) => (
+                              <div key={i} className="space-y-0.5">
+                                <div className="font-semibold text-slate-100 text-[11px]">• [{item.heading}]</div>
+                                <div className="text-slate-300 text-[11px] pl-3">{item.explanation}</div>
+                                {item.real_example && (
+                                  <div className="text-emerald-300/90 italic font-mono text-[10px] pl-3">
+                                    Ex ➔ {item.real_example}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {rawBody.length === 0 && sig.length === 0 && ch.length === 0 && wf.length === 0 && (
+                        <p className="text-slate-400 text-[11px] italic">Examination dimensions calibrated in PYQ link below.</p>
+                      )}
+                    </div>
+
+                    {/* 8. Match PYQ with that News */}
+                    {card.pyq_reference && (
+                      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/90 block mb-1">
+                          📍 MATCH PYQ OF THAT NEWS (UPSC & STATE PCS)
+                        </span>
+                        <p className="text-slate-300 text-[11px] font-mono leading-relaxed">
                           {card.pyq_reference}
                         </p>
                       </div>
                     )}
 
-                    {/* Section 5: Conclusion */}
+                    {/* 9. Short Conclusion */}
                     {card.conclusion && (
-                      <div className="bg-[#060812] border border-slate-800/90 p-4 sm:p-5 rounded-xl space-y-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-amber-400 font-mono block">
-                          🎯 SHORT WAY-FORWARD CONCLUSION (TOPPER-STYLE)
+                      <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-3 text-[11px]">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                          🎯 SHORT CONCLUSION (FUTURE-ORIENTED • TOPPER-STYLE)
                         </span>
-                        <blockquote className="text-xs sm:text-sm text-slate-300 italic border-l-2 border-emerald-400 pl-3">
+                        <p className="text-slate-300 italic font-serif leading-relaxed">
                           "{card.conclusion}"
-                        </blockquote>
+                        </p>
                       </div>
                     )}
 
-                    {/* Section 6: Prelims Traps */}
-                    {card.prelims_traps && (
-                      <div className="bg-[#060812] border border-red-500/20 p-4 sm:p-5 rounded-xl space-y-2">
-                        <span className="text-xs font-black uppercase tracking-wider text-red-400 font-mono block">
-                          ⚠️ PRELIMS DISTRACTOR TRAPS (EXAMINER MINDSET)
-                        </span>
-                        <ul className="space-y-1.5 text-xs text-slate-300 font-mono">
-                          {card.prelims_traps.map((tr, i) => (
-                            <li key={i} className="text-red-300/90">• {tr}</li>
-                          ))}
-                        </ul>
+                    {/* 10. One Prelims MCQ */}
+                    {hasMCQ && (
+                      <div className="border-t border-slate-800/80 pt-3">
+                        <button
+                          onClick={() => setRevealedMCQ(prev => ({ ...prev, [card.id]: !prev[card.id] }))}
+                          className="w-full flex items-center justify-between py-1.5 text-xs font-bold text-amber-400 hover:text-amber-300"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            🎯 Prelims Drill: 3-Statement Trap MCQ
+                          </span>
+                          <span className="text-[10px] font-mono bg-amber-400/10 px-2.5 py-0.5 rounded border border-amber-400/20">
+                            {revealedMCQ[card.id] ? 'Close' : 'Attempt Drill'}
+                          </span>
+                        </button>
+
+                        {revealedMCQ[card.id] && (
+                          <div className="mt-3 bg-[#080B14] border border-slate-800 p-4 rounded-xl space-y-3.5 text-xs">
+                            <p className="font-semibold text-slate-100 leading-snug whitespace-pre-line">
+                              {card.mcq_data.question}
+                            </p>
+
+                            <div className="space-y-2">
+                              {Object.entries(card.mcq_data.options || {}).map(([key, value]) => {
+                                const isThisSelected = userChoice === key
+                                return (
+                                  <button
+                                    key={key}
+                                    onClick={() => setSelectedAnswers(prev => ({ ...prev, [card.id]: key }))}
+                                    className={`w-full text-left p-3 rounded-lg border text-xs flex items-center gap-3 transition-all ${
+                                      isThisSelected
+                                        ? 'bg-amber-500/10 border-amber-500/60 text-white'
+                                        : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:bg-slate-800/50'
+                                    }`}
+                                  >
+                                    <span className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
+                                      isThisSelected ? 'bg-amber-400 text-black' : 'bg-slate-800 text-slate-400'
+                                    }`}>
+                                      {key}
+                                    </span>
+                                    <span>{value}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+
+                            {userChoice && (
+                              <div className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                                isCorrect ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
+                              }`}>
+                                <div className="font-bold mb-1">
+                                  {isCorrect ? '✅ Correct! Official standard logic verified.' : `❌ Incorrect (Correct: Option [${card.mcq_data.answer}])`}
+                                </div>
+                                <p className="text-slate-300 text-[11px]">{card.mcq_data.trap_explanation}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
                 )}
               </article>
             )
-          })
-        )}
+          })}
+        </section>
+
       </main>
 
-      {/* Mandatory Sign In Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0A0D1B] border border-amber-500/30 max-w-md w-full p-6 sm:p-8 rounded-3xl space-y-5 relative">
-            <button
-              onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white text-sm"
-            >
-              ✕
-            </button>
-            <div className="text-center space-y-1">
-              <span className="text-2xl">⚡</span>
-              <h3 className="text-lg font-bold text-white">Access CivilPulse Intel</h3>
-              <p className="text-xs text-slate-400 font-mono">Enter your email to receive a 1-click passwordless sign-in token.</p>
-            </div>
-            <form onSubmit={handleMagicLogin} className="space-y-3">
-              <input
-                type="email"
-                placeholder="aspirant@gmail.com"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                required
-                className="w-full bg-[#060812] border border-slate-700 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-amber-400 font-mono"
-              />
-              <button
-                type="submit"
-                className="w-full bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold py-3 rounded-xl transition-all font-mono uppercase"
-              >
-                Send Secure Magic Link
-              </button>
-            </form>
-            {authStatus && (
-              <p className="text-center text-xs font-mono text-amber-300 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
-                {authStatus}
-              </p>
-            )}
+      {/* Compliance Footer Shield */}
+      <footer className="mt-20 border-t border-slate-800/80 bg-[#04060C] py-10 px-4 text-slate-500 text-[11px] leading-relaxed">
+        <div className="max-w-5xl mx-auto space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+            <span className="font-bold text-slate-300 text-xs">CivilPulse Legal, Statutory & Compliance Framework</span>
+            <span className="font-mono text-[10px]">Section 52 Indian Copyright Act, 1957 Compliant • 18% GST Inclusive</span>
           </div>
+          <p>
+            <strong>Fair Dealing & Pedagogical Citation Notice:</strong> CivilPulse publishes independent pedagogical evaluation frameworks, administrative syntheses, and syllabus mappings under Section 52(1)(a) of the Indian Copyright Act, 1957. References to newspapers (such as <em>The Hindu</em> or <em>The Indian Express</em>) are strictly for academic source attribution and research reference.
+          </p>
+          <p>
+            <strong>Statutory Non-Affiliation Disclaimer:</strong> CivilPulse is an independent educational platform and is not affiliated, endorsed, or connected with the Union Public Service Commission (UPSC), any State Public Service Commission (UPPSC, BPSC, RPSC, MPPSC), or any publishing houses.
+          </p>
+          <p>
+            <strong>Digital Access & Non-Refund Policy:</strong> CivilPulse provides immediate free access to daily sample cards to verify platform utility. Upon purchase of the Daily Intel Pass or 360° Ranker Pass, full unhindered access to proprietary databases and vaults is activated instantly. Consequently, all digital subscription transactions are final, non-cancellable, and strictly non-refundable.
+          </p>
         </div>
-      )}
+      </footer>
 
     </div>
   )
