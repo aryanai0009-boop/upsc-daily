@@ -69,12 +69,12 @@ export default function CivilPulseFeed() {
     initAuth()
   }, [])
 
-  // Fetch Feed & Populate Available Dates (With Dual-Table Compatibility)
+  // Fetch Feed & Populate Available Dates (Dual-Table & Dual-Schema Safe)
   useEffect(() => {
     async function fetchCards() {
       setLoading(true)
       
-      // Check primary table: daily_cards
+      // Primary table fetch
       let { data, error } = await supabase
         .from('daily_cards')
         .select('*')
@@ -83,8 +83,8 @@ export default function CivilPulseFeed() {
         .order('created_at', { ascending: false })
         .limit(40)
 
-      // Fallback: If daily_cards is empty, check daily_intel_cards
-      if ((error || !data || data.length === 0)) {
+      // Fallback table fetch
+      if (error || !data || data.length === 0) {
         const { data: fallbackData, error: fbError } = await supabase
           .from('daily_intel_cards')
           .select('*')
@@ -131,27 +131,25 @@ export default function CivilPulseFeed() {
     fetchCards()
   }, [medium])
 
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
-      })
-      if (error) setShowAuthModal(true)
-    } catch {
-      setShowAuthModal(true)
-    }
-  }
-
+  // Direct Passwordless 1-Click Email Magic Link
   const handleMagicLogin = async (e) => {
     e.preventDefault()
-    if (!authEmail) return
-    setAuthMessage('Sending secure login link...')
+    if (!authEmail || !authEmail.includes('@')) {
+      setAuthMessage('Please enter a valid email address.')
+      return
+    }
+    setAuthMessage('Dispatching secure 1-click login link...')
     const { error } = await supabase.auth.signInWithOtp({
       email: authEmail,
-      options: { emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : '' }
+      options: { emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '' }
     })
-    setAuthMessage(error ? `Error: ${error.message}` : 'Login link sent to your email! Click it to stay logged in.')
+    setAuthMessage(error ? `Error: ${error.message}` : '⚡ 1-Click login link sent! Check your email inbox or spam.')
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUserProfile({ isLoggedIn: false, email: '', planType: 'FREE', referralCode: '', referralCount: 0 })
+    window.location.reload()
   }
 
   const isCardPaywalled = (idx) => {
@@ -188,7 +186,7 @@ export default function CivilPulseFeed() {
         ))}
       </div>
 
-      {/* Header */}
+      {/* Header (Pure Email Flow - No Google Auth) */}
       <header className="sticky top-0 z-40 bg-[#070913]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -233,31 +231,34 @@ export default function CivilPulseFeed() {
               <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                 <span className="text-[11px] font-mono text-amber-400 font-bold">{userProfile.planType}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-[10px] text-slate-500 hover:text-rose-400 font-mono ml-1"
+                >
+                  ✕
+                </button>
               </div>
             ) : (
               <button
-                onClick={handleGoogleLogin}
-                className="flex items-center gap-1.5 text-xs bg-white hover:bg-slate-100 text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-white text-slate-900 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
               >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                <span>Google Sign-In</span>
+                <span>✉️ Email Sign-In</span>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Auth Fallback Modal */}
+      {/* Passwordless Email Auth Modal */}
       {showAuthModal && !userProfile.isLoggedIn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0A0D1B] border border-slate-800 p-6 rounded-2xl max-w-sm w-full space-y-4">
-            <h3 className="text-base font-bold text-white">Student Login</h3>
-            <p className="text-xs text-slate-400">Enter your email to receive an instant secure 1-click login link.</p>
+          <div className="bg-[#0A0D1B] border border-amber-500/30 p-6 rounded-2xl max-w-sm w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">Student Sign-In</h3>
+              <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-white text-sm">✕</button>
+            </div>
+            <p className="text-xs text-slate-400">Enter your email address to receive an instant, passwordless 1-click login link.</p>
             <form onSubmit={handleMagicLogin} className="space-y-3">
               <input
                 type="email"
@@ -265,16 +266,17 @@ export default function CivilPulseFeed() {
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="aspirant@gmail.com"
-                className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                className="w-full bg-[#070914] border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-mono"
               />
-              <button type="submit" className="w-full bg-amber-500 text-black font-bold text-xs py-2.5 rounded-xl">
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2.5 rounded-xl transition-all">
                 Send 1-Click Magic Link
               </button>
             </form>
-            {authMessage && <p className="text-[11px] text-amber-300 font-mono">{authMessage}</p>}
-            <button onClick={() => setShowAuthModal(false)} className="text-[11px] text-slate-500 hover:underline block text-center w-full">
-              Close
-            </button>
+            {authMessage && (
+              <p className="text-[11px] text-amber-300 font-mono bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                {authMessage}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -353,7 +355,6 @@ export default function CivilPulseFeed() {
             const userChoice = selectedAnswers[card.id]
             const isCorrect = userChoice && card.mcq_data?.answer && userChoice.trim().toUpperCase() === card.mcq_data.answer.trim().toUpperCase()
 
-            // Safe parsing for body items
             const sig = card.ready_to_use_body?.significance || []
             const ch = card.ready_to_use_body?.challenges || []
             const wf = card.ready_to_use_body?.way_forward || []
@@ -476,13 +477,13 @@ export default function CivilPulseFeed() {
                       </div>
                     )}
 
-                    {/* 7. Ready-to-Use Body (Cleaned Header: MAINS DIMENSIONS & PERSPECTIVES) */}
+                    {/* 7. Ready-to-Use Body (LOCKED HEADER: MAINS DIMENSIONS & PERSPECTIVES) */}
                     <div className="bg-[#080B17] border border-slate-800/90 rounded-xl p-4 space-y-4 text-xs">
                       <span className="text-[10px] font-black uppercase tracking-widest text-amber-400/90 block">
                         🏛️ MAINS DIMENSIONS & PERSPECTIVES
                       </span>
 
-                      {/* Raw Array Format Support */}
+                      {/* Fallback if body came as direct array */}
                       {rawBody.length > 0 && (
                         <div className="space-y-2 pl-2 border-l border-amber-500/30">
                           {rawBody.map((item, i) => (
@@ -516,7 +517,7 @@ export default function CivilPulseFeed() {
                       {/* Challenges */}
                       {ch.length > 0 && (
                         <div className="space-y-2">
-                          <strong className="text-rose-400 text-xs block">2. Challenges & Bottlenecks (Mentioned in News):</strong>
+                          <strong className="text-rose-400 text-xs block">2. Challenges & Bottlenecks:</strong>
                           <div className="space-y-2 pl-2 border-l border-rose-500/30">
                             {ch.map((item, i) => (
                               <div key={i} className="space-y-0.5">
@@ -536,7 +537,7 @@ export default function CivilPulseFeed() {
                       {/* Way Forward */}
                       {wf.length > 0 && (
                         <div className="space-y-2">
-                          <strong className="text-emerald-400 text-xs block">3. Way Forward (Mentioned in News):</strong>
+                          <strong className="text-emerald-400 text-xs block">3. Way Forward (Actionable Insights):</strong>
                           <div className="space-y-2 pl-2 border-l border-emerald-500/30">
                             {wf.map((item, i) => (
                               <div key={i} className="space-y-0.5">
@@ -554,7 +555,7 @@ export default function CivilPulseFeed() {
                       )}
 
                       {rawBody.length === 0 && sig.length === 0 && ch.length === 0 && wf.length === 0 && (
-                        <p className="text-slate-400 text-[11px] italic">Examination dimensions calibrated in PYQ link below.</p>
+                        <p className="text-slate-400 text-[11px] italic">Strategic examination dimensions linked in PYQ matrix below.</p>
                       )}
                     </div>
 
